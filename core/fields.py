@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+""" Fields for DictEmbedded model """
+
 from core.exceptions import SimpleFieldValidationError
 
 
@@ -8,28 +10,26 @@ class SimpleField(object):
 
     def __init__(self, default=None, required=False, choices=None,
                  link_cls=None, **kwargs):
-        self.data = {}
+        # TODO: problem here - can't to user weakref dict -- possible memory leaks
+        self.data = {}  # instance values storage
+
         # set by SimpleEmbeddedMeta
         self._name = None
         self.default = default
-
         self.required = required
 
         # TODO: support choices validation
         self.choices = choices
 
-        # for control dependencies, now just information
         # TODO: support list of link_cls
         self.link_cls = link_cls
 
     def __get__(self, instance, owner):
-        # return self._value
         return self.data.get(id(instance), self.default)
 
     def __set__(self, instance, value):
         self.validate_link_cls(self.link_cls, value)
         self.data[id(instance)] = value
-        self._value = value
 
     def __delete__(self, instance):
         del self.data[id(instance)]
@@ -44,9 +44,9 @@ class SimpleField(object):
                 # that means list for Bids classes
                 if not isinstance(value, list) and value is not None:
                     raise SimpleFieldValidationError(
-                        "Wrong list value instance, should be list of '{}'".format(
-                            link_cls.__name__
-                        ))
+                        "Wrong list value instance, should be list of "
+                        "'{}'".format(link_cls.__name__)
+                    )
                 elif value is None:
                     pass
                 else:
@@ -63,18 +63,16 @@ class SimpleField(object):
                     "Unexpected 'link_cls' value: {}".format(link_cls)
                 )
 
-    def __del__(self):
-        self._value = None
-
     def validate(self):
         # check required
-        if self.required and not self._value:
+        field_val = self.data.get(id(self))
+        if self.required and not field_val:
             raise SimpleFieldValidationError(
                 "Field '{}' is required".format(self._name)
             )
 
         # check cls
-        if self.link_cls and not isinstance(self._value, self.link_cls):
+        if self.link_cls and not isinstance(field_val, self.link_cls):
             raise SimpleFieldValidationError(
                 "Field '{}' value not equal to '{}' instance".format(
                     self._name, self.link_cls.__name__)

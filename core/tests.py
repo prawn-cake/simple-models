@@ -64,15 +64,39 @@ class DictEmbeddedDocumentTest(TestCase):
 
         self.assertRaises(SimpleFieldValidationError, TestDictDocument)
 
-    def test_default_values(self):
-
+    def test_default_values_with_several_instances(self):
         td = MailboxItem()
         td_2 = MailboxItem(is_read=True)
 
         self.assertFalse(td.is_read)
+        self.assertTrue(td_2.is_read)
 
         td.is_read = True
+        td_2.is_read = False
         self.assertTrue(td.is_read)
+        self.assertFalse(td_2.is_read)
+
+
+class ValidationTest(TestCase):
+    def test_base(self):
+        class Address(DictEmbeddedDocument):
+            street = SimpleField()
+
+        class Person(DictEmbeddedDocument):
+            name = SimpleField()
+            address = SimpleField(link_cls=Address)
+
+        # person = Person.get_instance(address='Pagoda street')
+        street = 'Pagoda street'
+        self.assertRaises(
+            SimpleFieldValidationError,
+            Person.get_instance, address=street
+        )
+
+        person = Person.get_instance(
+            address=Address.get_instance(street=street)
+        )
+        self.assertEqual(person.address.street, street)
 
 
 class MailboxItem(DictEmbeddedDocument):

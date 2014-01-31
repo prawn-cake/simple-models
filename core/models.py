@@ -59,11 +59,11 @@ class DictEmbeddedDocument(AttributeDict):
         obj = super(DictEmbeddedDocument, cls).__new__(cls, *args)
 
         # init default fields
-        for f_name in cls._fields:
-            if f_name in kwargs:
-                setattr(obj, f_name, kwargs[f_name])
+        for field_name in cls._fields:
+            if field_name in kwargs:
+                setattr(obj, field_name, kwargs[field_name])
             else:
-                setattr(obj, f_name, getattr(cls, f_name, None))
+                setattr(obj, field_name, getattr(cls, field_name, None))
 
         # check required
         for rf_name in cls._required_fields:
