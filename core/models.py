@@ -20,6 +20,9 @@ class AttributeDict(dict):
 
 
 class SimpleEmbeddedMeta(type):
+
+    """ Metaclass for collecting info about fields """
+
     def __new__(mcs, name, parents, dct):
         """
 
@@ -33,15 +36,15 @@ class SimpleEmbeddedMeta(type):
         _fields = []
         _required_fields = []
 
-        for k, v in dct.items():
-            if isinstance(v, SimpleField):
-                _fields.append(k)
-                if v.required:
-                    _required_fields.append(k)
+        for name, obj in dct.items():
+            if isinstance(obj, SimpleField):
+                _fields.append(name)
+                if obj.required:
+                    _required_fields.append(name)
 
                 # reflect name for field
-                if isinstance(v, SimpleField):
-                    v._name = k
+                if isinstance(obj, SimpleField):
+                    obj._name = name
 
         dct['_fields'] = tuple(_fields)
         dct['_required_fields'] = tuple(_required_fields)
@@ -66,11 +69,13 @@ class DictEmbeddedDocument(AttributeDict):
                 setattr(obj, field_name, getattr(cls, field_name, None))
 
         # check required
-        for rf_name in cls._required_fields:
-            if not getattr(obj, rf_name):
+        for field_name in cls._required_fields:
+            # field_obj = type(getattr(obj, field_name)).__dict__[field_name]
+            # field_obj.validate()
+            if not getattr(obj, field_name):
                 raise SimpleFieldValidationError(
                     "Field '{}' is required for {}".format(
-                        rf_name, obj.__class__.__name__)
+                        field_name, obj.__class__.__name__)
                 )
         return obj
 

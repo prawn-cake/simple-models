@@ -21,7 +21,6 @@ class SimpleField(object):
         # TODO: support choices validation
         self.choices = choices
 
-        # TODO: support list of link_cls
         self.link_cls = link_cls
 
     def __get__(self, instance, owner):
@@ -64,6 +63,11 @@ class SimpleField(object):
                 )
 
     def validate(self):
+        """ Validator
+        Not used now
+
+        :return: :raise SimpleFieldValidationError:
+        """
         # check required
         field_val = self.data.get(id(self))
         if self.required and not field_val:
