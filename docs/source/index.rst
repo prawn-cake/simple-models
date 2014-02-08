@@ -6,7 +6,9 @@
 Welcome to simple-models's documentation!
 =========================================
 
-
+.. == contents ==
+.. _contents:
+.. contents::
 
 Contents:
 
@@ -14,8 +16,6 @@ Contents:
    :maxdepth: 2
 
    main
-
-.. contents::
 
 
 Indices and tables
