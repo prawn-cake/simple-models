@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
 
-from core.exceptions import SimpleFieldValidationError
+from simplemodels.exceptions import SimpleFieldValidationError
 
 
 class SimpleField(object):
@@ -37,7 +37,7 @@ class SimpleField(object):
 
     @classmethod
     def validate_link_cls(cls, link_cls, value):
-        from core.models import DictEmbeddedDocument
+        from simplemodels.models import DictEmbeddedDocument
 
         if link_cls:
             if isinstance(link_cls, list):

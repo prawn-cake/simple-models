@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 from datetime import datetime
-from core.exceptions import SimpleFieldValidationError
-from core.fields import SimpleField
-from core.models import AttributeDict, DictEmbeddedDocument
-from core.utils import Choices
+from simplemodels.exceptions import SimpleFieldValidationError
+from simplemodels.fields import SimpleField
+from simplemodels.models import AttributeDict, DictEmbeddedDocument
+from simplemodels.utils import Choices
 
 
 class MailboxItem(DictEmbeddedDocument):

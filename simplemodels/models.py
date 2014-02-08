@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from core.exceptions import SimpleFieldValidationError
-from core.fields import SimpleField
+from simplemodels.exceptions import SimpleFieldValidationError
+from simplemodels.fields import SimpleField
 
 
 class AttributeDict(dict):

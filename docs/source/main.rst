@@ -28,8 +28,8 @@ Simple example
 
 .. code-block:: python
 
-    from core.fields import SimpleField
-    from core.models import DictEmbeddedDocument
+    from simplemodels.fields import SimpleField
+    from simplemodels.models import DictEmbeddedDocument
 
 
     class Address(DictEmbeddedDocument):
@@ -83,7 +83,7 @@ Simple field
 There is only one field type - SimpleField.
 You can store any value here. No need to distinguish type of values now.
 
-.. autoclass:: core.models.SimpleField
+.. autoclass:: simplemodels.models.SimpleField
     :members:
     :private-members:
     :special-members:
