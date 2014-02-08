@@ -103,13 +103,16 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertTrue(td.is_read)
         self.assertFalse(td_2.is_read)
 
+    def test_getting_classname(self):
+        self.assertEqual(Address.__name__, 'Address')
+
 
 class Address(DictEmbeddedDocument):
     street = SimpleField()
 
 
 class Person(DictEmbeddedDocument):
-    name = SimpleField()
+    name = SimpleField(required=True)
     address = SimpleField(link_cls=Address)
 
 
@@ -124,6 +127,7 @@ class ValidationTest(TestCase):
     def test_linking_cls(self):
         street = 'Pagoda street'
         person = Person.get_instance(
-            address=Address.get_instance(street=street)
+            address=Address.get_instance(street=street,),
+            name='Max'
         )
         self.assertEqual(person.address.street, street)

@@ -36,15 +36,15 @@ class SimpleEmbeddedMeta(type):
         _fields = []
         _required_fields = []
 
-        for name, obj in dct.items():
+        for obj_name, obj in dct.items():
             if isinstance(obj, SimpleField):
-                _fields.append(name)
+                _fields.append(obj_name)
                 if obj.required:
-                    _required_fields.append(name)
+                    _required_fields.append(obj_name)
 
                 # reflect name for field
                 if isinstance(obj, SimpleField):
-                    obj._name = name
+                    obj._name = obj_name
 
         dct['_fields'] = tuple(_fields)
         dct['_required_fields'] = tuple(_required_fields)
@@ -58,20 +58,6 @@ class DictEmbeddedDocument(AttributeDict):
 
     __metaclass__ = SimpleEmbeddedMeta
 
-    def __new__(cls, *args, **kwargs):
-        obj = super(DictEmbeddedDocument, cls).__new__(cls, *args)
-
-        # check required
-        for field_name in cls._required_fields:
-            # field_obj = type(getattr(obj, field_name)).__dict__[field_name]
-            # field_obj.validate()
-            if not getattr(obj, field_name):
-                raise SimpleFieldValidationError(
-                    "Field '{}' is required for {}".format(
-                        field_name, obj.__class__.__name__)
-                )
-        return obj
-
     def __init__(self, **kwargs):
         super(DictEmbeddedDocument, self).__init__(**kwargs)
         for field_name in self._fields:
@@ -82,6 +68,16 @@ class DictEmbeddedDocument(AttributeDict):
                 # this trick need for init default structure representation like
                 # Document() -> {'field_1': <value OR default value>, ...}
                 setattr(self, field_name, getattr(self, field_name))
+
+        cls = type(self)
+        for field_name in cls._required_fields:
+            # field_obj = type(getattr(obj, field_name)).__dict__[field_name]
+            # field_obj.validate()
+            if not getattr(self, field_name):
+                raise SimpleFieldValidationError(
+                    "Field '{}' is required for {}".format(
+                        field_name, cls.__name__)
+                )
 
     @classmethod
     def get_instance(cls, **kwargs):

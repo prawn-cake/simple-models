@@ -11,7 +11,14 @@ class SimpleField(object):
     def __init__(self, default=None, required=False, choices=None,
                  link_cls=None, **kwargs):
 
-        # set by SimpleEmbeddedMeta
+        """
+
+        :param default: default value
+        :param required: is field required
+        :param choices: choices list. See utils.Choices
+        :param link_cls: link to nested structure
+        :param kwargs: for future options
+        """
         self._name = None
         self.default = default
         self.required = required
