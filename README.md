@@ -5,9 +5,7 @@ Simple models - structured dict-like models which is useful for many tasks
 Quick start
 ===========
 
-Convenient way to declare your structured data
-
-.. code-block:: python
+Convenient way to declare your structured data::
 
     from simplemodels.fields import SimpleField
     from simplemodels.models import DictEmbeddedDocument
