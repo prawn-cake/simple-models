@@ -21,7 +21,7 @@ class AttributeDict(dict):
 
 class SimpleEmbeddedMeta(type):
 
-    """ Metaclass for collecting info about fields """
+    """ Metaclass for collecting fields info """
 
     def __new__(mcs, name, parents, dct):
         """
@@ -61,13 +61,6 @@ class DictEmbeddedDocument(AttributeDict):
     def __new__(cls, *args, **kwargs):
         obj = super(DictEmbeddedDocument, cls).__new__(cls, *args)
 
-        # init default fields
-        for field_name in cls._fields:
-            if field_name in kwargs:
-                setattr(obj, field_name, kwargs[field_name])
-            else:
-                setattr(obj, field_name, getattr(cls, field_name, None))
-
         # check required
         for field_name in cls._required_fields:
             # field_obj = type(getattr(obj, field_name)).__dict__[field_name]
@@ -78,6 +71,17 @@ class DictEmbeddedDocument(AttributeDict):
                         field_name, obj.__class__.__name__)
                 )
         return obj
+
+    def __init__(self, **kwargs):
+        super(DictEmbeddedDocument, self).__init__(**kwargs)
+        for field_name in self._fields:
+            if field_name in kwargs:
+                setattr(self, field_name, kwargs[field_name])
+            else:
+                # very tricky here -- look at descriptor SimpleField
+                # this trick need for init default structure representation like
+                # Document() -> {'field_1': <value OR default value>, ...}
+                setattr(self, field_name, getattr(self, field_name))
 
     @classmethod
     def get_instance(cls, **kwargs):

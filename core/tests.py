@@ -7,6 +7,33 @@ from core.models import AttributeDict, DictEmbeddedDocument
 from core.utils import Choices
 
 
+class MailboxItem(DictEmbeddedDocument):
+    TYPES = Choices(
+        ("SG", "SUGGESTION", "Suggestion"),
+        ("ML", "MAIL", "Mail")
+    )
+
+    subject = SimpleField(default='')
+    body = SimpleField(default='')
+    type = SimpleField(choices=TYPES, max_length=10, default=TYPES.MAIL)
+    # received_at = SimpleField(default=timezone.now)
+    received_at = SimpleField(default='')
+    is_read = SimpleField(default=False)
+
+    def __init__(self, **kwargs):
+        super(MailboxItem, self).__init__(**kwargs)
+        if not 'received_at' in kwargs and not self.received_at:
+            self.received_at = datetime.now()
+
+    def __repr__(self):
+        return unicode("<{}({}): {}>".format(
+            self.__class__.__name__, self.type, self.subject))
+
+    def __unicode__(self):
+        return unicode("<{}({}): {}>".format(
+            self.__class__.__name__, self.type, self.subject))
+
+
 class AttributeDictTest(TestCase):
     def test_dict(self):
 
@@ -52,7 +79,7 @@ class DictEmbeddedDocumentTest(TestCase):
         )
 
     def test_simple_field_default(self):
-        class A(object):
+        class A(DictEmbeddedDocument):
             f = SimpleField(default=10)
 
         a = A()
@@ -77,50 +104,26 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertFalse(td_2.is_read)
 
 
+class Address(DictEmbeddedDocument):
+    street = SimpleField()
+
+
+class Person(DictEmbeddedDocument):
+    name = SimpleField()
+    address = SimpleField(link_cls=Address)
+
+
 class ValidationTest(TestCase):
-    def test_base(self):
-        class Address(DictEmbeddedDocument):
-            street = SimpleField()
-
-        class Person(DictEmbeddedDocument):
-            name = SimpleField()
-            address = SimpleField(link_cls=Address)
-
-        # person = Person.get_instance(address='Pagoda street')
+    def test_raise_validation_error(self):
         street = 'Pagoda street'
         self.assertRaises(
             SimpleFieldValidationError,
             Person.get_instance, address=street
         )
 
+    def test_linking_cls(self):
+        street = 'Pagoda street'
         person = Person.get_instance(
             address=Address.get_instance(street=street)
         )
         self.assertEqual(person.address.street, street)
-
-
-class MailboxItem(DictEmbeddedDocument):
-    TYPES = Choices(
-        ("SG", "SUGGESTION", "Suggestion"),
-        ("ML", "MAIL", "Mail")
-    )
-
-    subject = SimpleField(default='')
-    body = SimpleField(default='')
-    type = SimpleField(choices=TYPES, max_length=10, default=TYPES.MAIL)
-    # received_at = SimpleField(default=timezone.now)
-    received_at = SimpleField(default='')
-    is_read = SimpleField(default=False)
-
-    def __init__(self, **kwargs):
-        super(MailboxItem, self).__init__(**kwargs)
-        if not 'received_at' in kwargs and not self.received_at:
-            self.received_at = datetime.now()
-
-    def __repr__(self):
-        return unicode("<{}({}): {}>".format(
-            self.__class__.__name__, self.type, self.subject))
-
-    def __unicode__(self):
-        return unicode("<{}({}): {}>".format(
-            self.__class__.__name__, self.type, self.subject))

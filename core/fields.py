@@ -10,8 +10,6 @@ class SimpleField(object):
 
     def __init__(self, default=None, required=False, choices=None,
                  link_cls=None, **kwargs):
-        # TODO: problem here - can't to user weakref dict -- possible memory leaks
-        self.data = {}  # instance values storage
 
         # set by SimpleEmbeddedMeta
         self._name = None
@@ -24,14 +22,11 @@ class SimpleField(object):
         self.link_cls = link_cls
 
     def __get__(self, instance, owner):
-        return self.data.get(id(instance), self.default)
+        return instance.__dict__.get(self._name, self.default)
 
     def __set__(self, instance, value):
         self.validate_link_cls(self.link_cls, value)
-        self.data[id(instance)] = value
-
-    def __delete__(self, instance):
-        del self.data[id(instance)]
+        instance.__dict__[self._name] = value
 
     @classmethod
     def validate_link_cls(cls, link_cls, value):
@@ -83,3 +78,9 @@ class SimpleField(object):
             )
 
         return True
+
+    def __repr__(self):
+        return unicode("<{}: {}>".format(self.__class__.__name__, self._name))
+
+    def __unicode__(self):
+        return unicode("<{}: {}>".format(self.__class__.__name__, self._name))

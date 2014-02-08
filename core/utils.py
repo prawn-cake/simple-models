@@ -50,3 +50,16 @@ class Choices(object):
 
     def __len__(self):
         return len(self._choices)
+
+
+class BuiltinWrapper(object):
+
+    """Class-wrapper for built-in models for use it with weakref """
+
+    def __init__(self, value, name=None):
+        self._value = value
+        self._name = name or 'undefined'
+
+    @property
+    def value(self):
+        return self._value
