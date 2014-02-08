@@ -15,7 +15,6 @@ Contents:
    main
 
 
-
 Indices and tables
 ==================
 
