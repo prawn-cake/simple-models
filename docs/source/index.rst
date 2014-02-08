@@ -6,9 +6,6 @@
 Welcome to simple-models's documentation!
 =========================================
 
-.. == contents ==
-.. contents::
-
 
 Contents:
 
