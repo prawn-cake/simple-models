@@ -30,7 +30,7 @@ Convenient way to declare your structured data
     'Saint-Petersburg'
 
     >>> import json
-    >>> json.dumps(a)
+    >>> json.dumps(address)
     '{"city": "Saint-Petersburg", "street": "Nevskii prospect 10"}'
 
 
