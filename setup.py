@@ -4,7 +4,7 @@ setup(
     name='simple-models',
     version='0.1.0',
     packages=['core'],
-    url='',
+    url='https://github.com/prawn-cake/simple-models.git',
     license='GPL v3',
     author='maxi',
     author_email='me@multichannel.net',
