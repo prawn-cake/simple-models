@@ -5,7 +5,7 @@ Simple models - structured dict-like models which is useful for many tasks
 Quick start
 ===========
 
-Convenient way to declare your structured data::
+Convenient way to declare your structured data
 
     from simplemodels.fields import SimpleField
     from simplemodels.models import DictEmbeddedDocument
@@ -38,7 +38,7 @@ Convenient way to declare your structured data::
 Installation
 ============
 
-Nothing special here::
+Nothing special here
 
     pip install simple-models
 
