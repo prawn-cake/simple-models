@@ -83,7 +83,7 @@ Simple field
 There is only one field type - SimpleField.
 You can store any value here. No need to distinguish type of values now.
 
-.. autoclass:: simplemodels.models.SimpleField
+.. autoclass:: simplemodels.fields.SimpleField
     :members:
     :private-members:
     :special-members:
