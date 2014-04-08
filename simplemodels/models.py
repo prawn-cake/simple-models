@@ -81,4 +81,10 @@ class DictEmbeddedDocument(AttributeDict):
 
     @classmethod
     def get_instance(cls, **kwargs):
-        return cls(**kwargs)
+        """Return instance with exactly the same fields as described,
+        filter not described keys.
+
+        :param kwargs:
+        :return: cls instance
+        """
+        return cls(**{k: v for k, v in kwargs.items() if k in cls._fields})

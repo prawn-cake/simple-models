@@ -106,6 +106,35 @@ class DictEmbeddedDocumentTest(TestCase):
     def test_getting_classname(self):
         self.assertEqual(Address.__name__, 'Address')
 
+    def test_property_getter(self):
+        class DocumentWithProperty(DictEmbeddedDocument):
+            a = SimpleField()
+            b = SimpleField()
+
+            @property
+            def c(self):
+                return str(self.a) + str(self.b)
+
+        document = DocumentWithProperty.get_instance(a=1, b=2)
+
+        self.assertEqual(document.c, '12')
+
+    def test_get_instance_method(self):
+        """ get_instance method should guarantee that object contains exactly
+        same fields as described
+
+
+        """
+        class TestModel(DictEmbeddedDocument):
+            a = SimpleField()
+            b = SimpleField()
+
+        source_data = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
+        obj = TestModel.get_instance(**source_data)
+        self.assertEqual(len(obj), len(TestModel._fields))
+        for field_name in obj.keys():
+            field_name in TestModel._fields
+
 
 class Address(DictEmbeddedDocument):
     street = SimpleField()
