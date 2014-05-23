@@ -77,6 +77,22 @@ Simple example
     {'name': 'Max', 'address': {'city': 'Saint-Petersburg', 'street': 'Nevskii prospect 10'}}
 
 
+    # auto-validate and create nested link_cls structure
+
+    class Address(DictEmbeddedDocument):
+        city = SimpleField(required=True)
+        street = SimpleField()
+
+
+    # This example will raise an SimpleFieldValidationError !
+    >>> person = Person(name='Max', address={'town': 'Saint-Petersburg'})
+
+    # But if pass correct structure, then all will be ok
+    >>> person = Person(name='Max', address={'city': 'Saint-Petersburg'})
+    >>> isinstance(person.address, Address)
+    True
+
+
 Simple field
 ############
 
