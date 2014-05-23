@@ -32,37 +32,48 @@ class SimpleField(object):
         return instance.__dict__.get(self._name, self.default)
 
     def __set__(self, instance, value):
-        self.validate_link_cls(self.link_cls, value)
+        if self.link_cls:
+            value = self.validate_link_cls(self.link_cls, value)
         instance.__dict__[self._name] = value
 
     @classmethod
     def validate_link_cls(cls, link_cls, value):
         from simplemodels.models import DictEmbeddedDocument
 
-        if link_cls:
-            if isinstance(link_cls, list):
-                # link_cls can equals to '[Bids]' for example
-                # that means list for Bids classes
-                if not isinstance(value, list) and value is not None:
-                    raise SimpleFieldValidationError(
-                        "Wrong list value instance, should be list of "
-                        "'{}'".format(link_cls.__name__)
-                    )
-                elif value is None:
-                    pass
-                else:
-                    for v in value:
-                        cls.validate_link_cls(link_cls[0], v)
-            elif issubclass(link_cls, DictEmbeddedDocument):
-                if not isinstance(value, link_cls) and value is not None:
-                    raise SimpleFieldValidationError(
-                        "Wrong value instance, should be '{}'".format(
-                            link_cls.__name__
-                        ))
-            else:
+        if isinstance(link_cls, list):
+            # link_cls can equals to '[Bids]' for example
+            # that means list for Bids classes
+            if not isinstance(value, list) and value is not None:
                 raise SimpleFieldValidationError(
-                    "Unexpected 'link_cls' value: {}".format(link_cls)
+                    "Wrong list value instance, should be list of "
+                    "'{}'".format(link_cls.__name__)
                 )
+            elif value is None:
+                pass
+            else:
+                for v in list(value):
+                    cls.validate_link_cls(link_cls[0], v)
+        elif issubclass(link_cls, DictEmbeddedDocument):
+            # Auto-create instance from dict if structure is correct
+            if isinstance(value, dict):
+                try:
+                    value = link_cls.get_instance(**value)
+                except SimpleFieldValidationError:
+                    raise SimpleFieldValidationError(
+                        "Passed wrond dict value {} for link_cls "
+                        "'{}'".format(value, link_cls)
+                    )
+            elif not isinstance(value, link_cls) and value is not None:
+                raise SimpleFieldValidationError(
+                    "Wrong value instance, should be '{}'".format(
+                        link_cls.__name__
+                    ))
+
+        else:
+            raise SimpleFieldValidationError(
+                "Unexpected 'link_cls' value: {}".format(link_cls)
+            )
+        return value
 
     def validate(self):
         """ Validator

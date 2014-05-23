@@ -160,3 +160,19 @@ class ValidationTest(TestCase):
             name='Max'
         )
         self.assertEqual(person.address.street, street)
+
+    def test_auto_create_linking_cls_nested_object(self):
+        """If passed correct structure expect that document validate and create
+        instance of link_cls class automatically
+
+        """
+        street = 'Pagoda street'
+        address_dict = {'street': street}
+        self.assertRaises(
+            SimpleFieldValidationError,
+            Person.get_instance, address={'wrong address param': 'test'}
+        )
+        person = Person.get_instance(address=address_dict, name='Max')
+        self.assertIsInstance(person, Person)
+        self.assertIsInstance(person.address, Address)
+        self.assertEqual(person.address.street, address_dict['street'])
