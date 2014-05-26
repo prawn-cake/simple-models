@@ -65,8 +65,8 @@ class SimpleField(object):
                     )
             elif not isinstance(value, link_cls) and value is not None:
                 raise SimpleFieldValidationError(
-                    "Wrong value instance, should be '{}'".format(
-                        link_cls.__name__
+                    "Wrong value instance '{}', should be '{}'".format(
+                        value, link_cls.__name__
                     ))
 
         else:
