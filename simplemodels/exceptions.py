@@ -14,3 +14,7 @@ class RequiredValidationError(ValidationError):
     """ Raised when required field is not found """
 
     pass
+
+
+class ValidationTypeIsNotSupported(ValidationError):
+    pass

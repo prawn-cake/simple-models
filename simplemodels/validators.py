@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from simplemodels.exceptions import ValidationError
-from simplemodels.models import DictEmbeddedDocument 
+from simplemodels.exceptions import ValidationError, ValidationTypeIsNotSupported
+from simplemodels.models import DictEmbeddedDocument
 
 
 class AbstractValidator(object):
@@ -21,17 +21,39 @@ class TypeValidator(AbstractValidator):
     TYPE = None
 
     @classmethod
+    def using(cls, value):
+        """Override TYPE value.
+        Usage:
+            Validator.using(MyKlass).validate(value)
+
+        :param value:
+        :return:
+        """
+        setattr(cls, '__BACKUP_TYPE', cls.TYPE)
+        setattr(cls, 'TYPE', value)
+        return cls
+
+    @classmethod
+    def _clean_validate(cls):
+        backup_type = getattr(cls, '__BACKUP_TYPE', None)
+        if backup_type:
+            setattr(cls, 'TYPE', backup_type)
+        setattr(cls, '__BACKUP_TYPE', None)
+
+    @classmethod
     def validate(cls, value):
         if cls.TYPE is None:  # for default NullValidator
-            return value
-
-        if isinstance(value, cls.TYPE):
-            return value
-
-        try:
-            value = cls.TYPE(value)
-        except ValueError as err:
-            raise ValidationError(err)
+            pass
+        elif isinstance(value, cls.TYPE):
+            pass
+        else:
+            try:
+                value = cls.TYPE(value)
+            except ValueError as err:
+                raise ValidationError(err)
+            finally:
+                cls._clean_validate()
+        cls._clean_validate()
         return value
 
 
@@ -65,6 +87,7 @@ class DictEmbeddedDocumentValidator(TypeValidator):
         :param value:
         :return: :raise ValidationError:
         """
+
         if isinstance(value, DictEmbeddedDocument):
             return value
 
@@ -72,7 +95,12 @@ class DictEmbeddedDocumentValidator(TypeValidator):
             raise ValidationError('Passed non-dict value for {} field'
                                   ''.format(DictEmbeddedDocument.__name__))
 
-        value = DictEmbeddedDocument.get_instance(**value)
+        if not issubclass(cls.TYPE, DictEmbeddedDocument):
+            raise ValidationError(
+                'Class {} is not a subclass of {}'.format(
+                    cls.TYPE.__name__, DictEmbeddedDocument.__name__))
+        value = cls.TYPE.get_instance(**value)
+
         return value
 
 
@@ -83,3 +111,15 @@ VALIDATORS_MAP = {
     dict: DictValidator,
     DictEmbeddedDocument: DictEmbeddedDocumentValidator
 }
+
+
+def get_validator(_type):
+    if _type in VALIDATORS_MAP:
+        return VALIDATORS_MAP[_type]
+
+    if _type.__bases__[-1] == DictEmbeddedDocument:
+        return VALIDATORS_MAP[DictEmbeddedDocument]
+
+    raise ValidationTypeIsNotSupported(
+        "Validation type '{}' is not supported".format(_type)
+    )
