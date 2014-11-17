@@ -169,6 +169,22 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
 
+        a = ModelA.get_instance(
+            id='1', name='Maks',
+            address={'street': 999, 'city': 'Saint-Petersburg'}
+        )
+        self.assertIsInstance(a, ModelA)
+        self.assertEqual(a.id, 1)
+        self.assertEqual(a.address.street, '999')
+        # city is not declared Address field
+        self.assertRaises(KeyError, getattr, a.address, 'city')
+
+        # Expect a ValidationError: wrong 'address' format is passed
+        self.assertRaises(
+            ValidationError, ModelA.get_instance,
+            id='1', name='Maks', address=[('street', 999), ]
+        )
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):

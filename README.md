@@ -18,7 +18,7 @@ Convenient way to declare your structured data
 
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
-        address = SimpleField(link_cls=Address)
+        address = SimpleField(_type=Address)  # object typing
 
 
     address = Address(street='Nevskii prospect 10')

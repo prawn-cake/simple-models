@@ -117,8 +117,10 @@ def get_validator(_type):
     if _type in VALIDATORS_MAP:
         return VALIDATORS_MAP[_type]
 
+    # determine parent class
     if _type.__bases__[-1] == DictEmbeddedDocument:
-        return VALIDATORS_MAP[DictEmbeddedDocument]
+        # Execute .using() to cast object class explicitly
+        return VALIDATORS_MAP[DictEmbeddedDocument].using(_type)
 
     raise ValidationTypeIsNotSupported(
         "Validation type '{}' is not supported".format(_type)
