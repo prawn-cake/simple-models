@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
 
-from simplemodels.exceptions import SimpleFieldValidationError
+from simplemodels.exceptions import ValidationError
+from simplemodels.validators import VALIDATORS_MAP
 
 
 class SimpleField(object):
@@ -9,7 +10,7 @@ class SimpleField(object):
     """Class-field with descriptor for DictEmbeddedDocument"""
 
     def __init__(self, default=None, required=False, choices=None,
-                 link_cls=None, **kwargs):
+                 link_cls=None, _type=None, **kwargs):
 
         """
 
@@ -20,6 +21,9 @@ class SimpleField(object):
         :param kwargs: for future options
         """
         self._name = None
+        # For future static typing
+        self.type = _type
+
         self.default = default
         self.required = required
 
@@ -32,8 +36,7 @@ class SimpleField(object):
         return instance.__dict__.get(self._name, self.default)
 
     def __set__(self, instance, value):
-        if self.link_cls:
-            value = self.validate_link_cls(self.link_cls, value)
+        value = VALIDATORS_MAP[self.type].validate(value)
         instance.__dict__[self._name] = value
 
     @classmethod
@@ -44,7 +47,7 @@ class SimpleField(object):
             # link_cls can equals to '[Bids]' for example
             # that means list for Bids classes
             if not isinstance(value, list) and value is not None:
-                raise SimpleFieldValidationError(
+                raise ValidationError(
                     "Wrong list value instance, should be list of "
                     "'{}'".format(link_cls.__name__)
                 )
@@ -58,44 +61,22 @@ class SimpleField(object):
             if isinstance(value, dict):
                 try:
                     value = link_cls.get_instance(**value)
-                except SimpleFieldValidationError:
-                    raise SimpleFieldValidationError(
+                except ValidationError:
+                    raise ValidationError(
                         "Passed wrond dict value {} for link_cls "
                         "'{}'".format(value, link_cls)
                     )
             elif not isinstance(value, link_cls) and value is not None:
-                raise SimpleFieldValidationError(
+                raise ValidationError(
                     "Wrong value instance '{}', should be '{}'".format(
                         value, link_cls.__name__
                     ))
 
         else:
-            raise SimpleFieldValidationError(
+            raise ValidationError(
                 "Unexpected 'link_cls' value: {}".format(link_cls)
             )
         return value
-
-    def validate(self):
-        """ Validator
-        Not used now
-
-        :return: :raise SimpleFieldValidationError:
-        """
-        # check required
-        field_val = self.data.get(id(self))
-        if self.required and not field_val:
-            raise SimpleFieldValidationError(
-                "Field '{}' is required".format(self._name)
-            )
-
-        # check cls
-        if self.link_cls and not isinstance(field_val, self.link_cls):
-            raise SimpleFieldValidationError(
-                "Field '{}' value not equal to '{}' instance".format(
-                    self._name, self.link_cls.__name__)
-            )
-
-        return True
 
     def __repr__(self):
         return unicode("<{}: {}>".format(self.__class__.__name__, self._name))

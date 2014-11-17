@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from simplemodels.exceptions import SimpleFieldValidationError
+from simplemodels.exceptions import RequiredValidationError
 from simplemodels.fields import SimpleField
 
 
@@ -60,6 +60,9 @@ class DictEmbeddedDocument(AttributeDict):
 
     def __init__(self, **kwargs):
         super(DictEmbeddedDocument, self).__init__(**kwargs)
+        cls = type(self)
+        errors = []
+
         for field_name in self._fields:
             if field_name in kwargs:
                 setattr(self, field_name, kwargs[field_name])
@@ -69,15 +72,16 @@ class DictEmbeddedDocument(AttributeDict):
                 # Document() -> {'field_1': <value OR default value>, ...}
                 setattr(self, field_name, getattr(self, field_name))
 
-        cls = type(self)
-        for field_name in cls._required_fields:
-            # field_obj = type(getattr(obj, field_name)).__dict__[field_name]
-            # field_obj.validate()
-            if not getattr(self, field_name):
-                raise SimpleFieldValidationError(
-                    "Field '{}' is required for {}".format(
-                        field_name, cls.__name__)
-                )
+            # Check for require
+            if field_name in cls._required_fields:
+                if not getattr(self, field_name):
+                    errors.append(
+                        "Field '{}' is required for {}".format(
+                            field_name, cls.__name__)
+                    )
+
+        if errors:
+            raise RequiredValidationError(str(errors))
 
     @classmethod
     def get_instance(cls, **kwargs):

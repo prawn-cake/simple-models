@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 from datetime import datetime
-from simplemodels.exceptions import SimpleFieldValidationError
+from simplemodels.exceptions import ValidationError
 from simplemodels.fields import SimpleField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
+from simplemodels.validators import VALIDATORS_MAP
 
 
 class MailboxItem(DictEmbeddedDocument):
@@ -89,7 +90,7 @@ class DictEmbeddedDocumentTest(TestCase):
         class TestDictDocument(DictEmbeddedDocument):
             xsi_type = SimpleField(required=True)
 
-        self.assertRaises(SimpleFieldValidationError, TestDictDocument)
+        self.assertRaises(ValidationError, TestDictDocument)
 
     def test_default_values_with_several_instances(self):
         td = MailboxItem()
@@ -149,7 +150,7 @@ class ValidationTest(TestCase):
     def test_raise_validation_error(self):
         street = 'Pagoda street'
         self.assertRaises(
-            SimpleFieldValidationError,
+            ValidationError,
             Person.get_instance, address=street
         )
 
@@ -169,10 +170,54 @@ class ValidationTest(TestCase):
         street = 'Pagoda street'
         address_dict = {'street': street}
         self.assertRaises(
-            SimpleFieldValidationError,
+            ValidationError,
             Person.get_instance, address={'wrong address param': 'test'}
         )
         person = Person.get_instance(address=address_dict, name='Max')
         self.assertIsInstance(person, Person)
         self.assertIsInstance(person.address, Address)
         self.assertEqual(person.address.street, address_dict['street'])
+
+
+class ValidatorsTest(TestCase):
+    def test_null_validator(self):
+        value = 10
+        value = VALIDATORS_MAP[None].validate(value)
+        # expect validator nothing to do and return value as-is
+        self.assertEqual(value, 10)
+
+    def test_str_validator(self):
+        value = 10
+        value = VALIDATORS_MAP[str].validate(value)
+        # expect converted to str value
+        self.assertEqual(value, '10')
+
+    def test_int_validator(self):
+        value = 10
+        value = VALIDATORS_MAP[int].validate(value)
+        self.assertEqual(value, 10)
+        # Expect an error
+        value = 'aa'
+        self.assertRaises(ValidationError, VALIDATORS_MAP[int].validate, value)
+
+    def test_dict_embedded_document_validator(self):
+        class Document(DictEmbeddedDocument):
+            title = SimpleField()
+            number = SimpleField()
+
+        value = Document.get_instance(title='document1', number=1)
+        value = VALIDATORS_MAP[DictEmbeddedDocument].validate(value)
+        self.assertIsInstance(value, DictEmbeddedDocument)
+        self.assertEqual(value.title, 'document1')
+        self.assertEqual(value.number, 1)
+
+        value = dict(title='document1', number=1)
+        value = VALIDATORS_MAP[DictEmbeddedDocument].validate(value)
+        self.assertIsInstance(value, DictEmbeddedDocument)
+        self.assertEqual(value.title, 'document1')
+        self.assertEqual(value.number, 1)
+
+        self.assertRaises(
+            ValidationError, VALIDATORS_MAP[DictEmbeddedDocument].validate,
+            ['invalid parameter']
+        )
