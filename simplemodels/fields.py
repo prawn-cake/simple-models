@@ -6,15 +6,15 @@ class SimpleField(object):
 
     """Class-field with descriptor for DictEmbeddedDocument"""
 
-    def __init__(self, default=None, required=False, choices=None,
-                 link_cls=None, _type=None, **kwargs):
+    def __init__(self, default=None, required=False, choices=None, _type=None,
+                 **kwargs):
 
         """
 
         :param default: default value
         :param required: is field required
         :param choices: choices list. See utils.Choices
-        :param link_cls: link to nested structure
+        :param _type: type validation
         :param kwargs: for future options
         """
         self._name = None
@@ -26,8 +26,6 @@ class SimpleField(object):
 
         # TODO: support choices validation
         self.choices = choices
-
-        self.link_cls = link_cls
 
     def __get__(self, instance, owner):
         return instance.__dict__.get(self._name, self.default)
