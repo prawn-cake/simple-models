@@ -44,7 +44,7 @@ class Address(DictEmbeddedDocument):
 
 class Person(DictEmbeddedDocument):
     name = SimpleField(required=True)
-    address = SimpleField(link_cls=Address)
+    address = SimpleField(_type=Address)
 
 
 #### End of test classes ###
