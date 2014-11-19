@@ -13,13 +13,13 @@ From version 0.2.0 the following functionality is not supported:
         ...
 
 
-    # prior to 0.2.0
+    <!-- prior to 0.2.0 -->
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
         address = SimpleField(link_cls=Address)
 
 
-    # starts from 0.2.0 universal type validation should be used instead
+    <!-- starts from 0.2.0 universal type validation should be used instead -->
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
         address = SimpleField(_type=Address)
