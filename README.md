@@ -2,6 +2,28 @@ simple-models
 =============
 Simple models - structured dict-like models which is useful for many tasks
 
+Notes
+======
+From version 0.2.0 the following functionality is not supported:
+
+* *link_cls* SimpleField attribute was replaced with universal type validation
+
+
+    class Address(DictEmbeddedDocument):
+        ...
+
+
+    # prior to 0.2.0
+    class Person(DictEmbeddedDocument):
+        name = SimpleField(required=True)
+        address = SimpleField(link_cls=Address)
+
+
+    # starts from 0.2.0 universal type validation should be used instead
+    class Person(DictEmbeddedDocument):
+        name = SimpleField(required=True)
+        address = SimpleField(_type=Address)
+
 Quick start
 ===========
 
@@ -37,8 +59,6 @@ Convenient way to declare your structured data
 
 Installation
 ============
-
-Nothing special here
 
     pip install simple-models
 
