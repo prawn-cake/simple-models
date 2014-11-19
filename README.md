@@ -19,7 +19,7 @@ From version 0.2.0 the following functionality is not supported:
         address = SimpleField(link_cls=Address)
 
 
-
+    # starts from 0.2.0 universal type validation should be used instead
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
         address = SimpleField(_type=Address)
