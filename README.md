@@ -6,7 +6,7 @@ Notes
 ======
 From version 0.2.0 the following functionality is not supported:
 
-* *link_cls* SimpleField attribute was replaced with universal type validation
+ **link_cls** SimpleField attribute was replaced with universal type validation
 
 
     class Address(DictEmbeddedDocument):
@@ -19,7 +19,7 @@ From version 0.2.0 the following functionality is not supported:
         address = SimpleField(link_cls=Address)
 
 
-        
+
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
         address = SimpleField(_type=Address)
