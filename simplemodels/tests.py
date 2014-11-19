@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 from datetime import datetime
-from simplemodels.exceptions import SimpleFieldValidationError
+from simplemodels.exceptions import ValidationError
 from simplemodels.fields import SimpleField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
+from simplemodels.validators import VALIDATORS_MAP
+
+
+### Test classes ###
 
 
 class MailboxItem(DictEmbeddedDocument):
@@ -32,6 +36,18 @@ class MailboxItem(DictEmbeddedDocument):
     def __unicode__(self):
         return unicode("<{}({}): {}>".format(
             self.__class__.__name__, self.type, self.subject))
+
+
+class Address(DictEmbeddedDocument):
+    street = SimpleField()
+
+
+class Person(DictEmbeddedDocument):
+    name = SimpleField(required=True)
+    address = SimpleField(link_cls=Address)
+
+
+#### End of test classes ###
 
 
 class AttributeDictTest(TestCase):
@@ -66,6 +82,8 @@ class DictEmbeddedDocumentTest(TestCase):
         bid = BidEmbedded()
 
         self.assertIsInstance(bid, dict)
+        self.assertIsInstance(bid._fields, dict)
+        self.assertIsInstance(bid._required_fields, tuple)
         self.assertEqual(
             sorted(bid._fields), sorted(('xsi_type', 'contentBid'))
         )
@@ -89,7 +107,7 @@ class DictEmbeddedDocumentTest(TestCase):
         class TestDictDocument(DictEmbeddedDocument):
             xsi_type = SimpleField(required=True)
 
-        self.assertRaises(SimpleFieldValidationError, TestDictDocument)
+        self.assertRaises(ValidationError, TestDictDocument)
 
     def test_default_values_with_several_instances(self):
         td = MailboxItem()
@@ -135,44 +153,91 @@ class DictEmbeddedDocumentTest(TestCase):
         for field_name in obj.keys():
             field_name in TestModel._fields
 
+    def test_field_type(self):
+        class PostAddress(DictEmbeddedDocument):
+            street = SimpleField(_type=str)
 
-class Address(DictEmbeddedDocument):
-    street = SimpleField()
+        class ModelA(DictEmbeddedDocument):
+            id = SimpleField(_type=int)
+            name = SimpleField(required=True, default='TestName')
+            address = SimpleField(_type=PostAddress)
 
+        a = ModelA.get_instance(
+            id='1', name='Maks', address=PostAddress.get_instance(street=999)
+        )
+        self.assertIsInstance(a, ModelA)
+        self.assertEqual(a.id, 1)
+        self.assertEqual(a.address.street, '999')
 
-class Person(DictEmbeddedDocument):
-    name = SimpleField(required=True)
-    address = SimpleField(link_cls=Address)
+        a = ModelA.get_instance(
+            id='1', name='Maks',
+            address={'street': 999, 'city': 'Saint-Petersburg'}
+        )
+        self.assertIsInstance(a, ModelA)
+        self.assertEqual(a.id, 1)
+        self.assertEqual(a.address.street, '999')
+        # city is not declared Address field
+        self.assertRaises(KeyError, getattr, a.address, 'city')
+
+        # Expect a ValidationError: wrong 'address' format is passed
+        self.assertRaises(
+            ValidationError, ModelA.get_instance,
+            id='1', name='Maks', address=[('street', 999), ]
+        )
 
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
         street = 'Pagoda street'
         self.assertRaises(
-            SimpleFieldValidationError,
+            ValidationError,
             Person.get_instance, address=street
         )
 
-    def test_linking_cls(self):
-        street = 'Pagoda street'
-        person = Person.get_instance(
-            address=Address.get_instance(street=street,),
-            name='Max'
-        )
-        self.assertEqual(person.address.street, street)
 
-    def test_auto_create_linking_cls_nested_object(self):
-        """If passed correct structure expect that document validate and create
-        instance of link_cls class automatically
+class ValidatorsTest(TestCase):
+    def test_null_validator(self):
+        value = 10
+        value = VALIDATORS_MAP[None].validate(value)
+        # expect validator nothing to do and return value as-is
+        self.assertEqual(value, 10)
 
-        """
-        street = 'Pagoda street'
-        address_dict = {'street': street}
+    def test_str_validator(self):
+        value = 10
+        value = VALIDATORS_MAP[str].validate(value)
+        # expect converted to str value
+        self.assertEqual(value, '10')
+
+    def test_int_validator(self):
+        value = 10
+        value = VALIDATORS_MAP[int].validate(value)
+        self.assertEqual(value, 10)
+        # Expect an error
+        value = 'aa'
+        self.assertRaises(ValidationError, VALIDATORS_MAP[int].validate, value)
+
+    def test_dict_embedded_document_validator(self):
+        class DocumentA(DictEmbeddedDocument):
+            title = SimpleField()
+            number = SimpleField()
+
+        class DocumentB(DictEmbeddedDocument):
+            title = SimpleField()
+            number = SimpleField()
+
+        value = DocumentA.get_instance(title='document1', number=1)
+        value = VALIDATORS_MAP[DictEmbeddedDocument].using(DocumentA).validate(value)
+        self.assertIsInstance(value, DocumentA)
+        self.assertEqual(value.title, 'document1')
+        self.assertEqual(value.number, 1)
+
+        value = dict(title='document1', number=1)
+        value = VALIDATORS_MAP[DictEmbeddedDocument].using(DocumentB).validate(value)
+        self.assertIsInstance(value, DocumentB)
+        self.assertEqual(value.title, 'document1')
+        self.assertEqual(value.number, 1)
+
         self.assertRaises(
-            SimpleFieldValidationError,
-            Person.get_instance, address={'wrong address param': 'test'}
+            ValidationError, VALIDATORS_MAP[DictEmbeddedDocument].validate,
+            ['invalid parameter']
         )
-        person = Person.get_instance(address=address_dict, name='Max')
-        self.assertIsInstance(person, Person)
-        self.assertIsInstance(person.address, Address)
-        self.assertEqual(person.address.street, address_dict['street'])
