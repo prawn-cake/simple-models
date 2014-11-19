@@ -75,7 +75,7 @@ Simple example
     # correct behaviour
     >>> person = Person(name='Max', address=Address.get_instance(street='Nevskii prospect 10'), insurance_number='111')
     >>> person
-    {'name': 'Max', 'address': {'city': 'Saint-Petersburg', 'street': 'Nevskii prospect 10'}, insurance_number=111}
+    {'name': 'Max', 'address': {'city': 'Saint-Petersburg', 'street': 'Nevskii prospect 10'}, 'insurance_number': 111}
 
 
     class Address(DictEmbeddedDocument):
