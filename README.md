@@ -65,8 +65,7 @@ Installation
 
 Full documentation
 ==================
-
-http://simple-models.readthedocs.org/en/latest/
+[![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
 
 
 Bug tracker
