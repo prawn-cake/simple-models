@@ -14,3 +14,10 @@ help:
 test:
 # target: test - Run tests
 	@$(PYTHON) -m unittest discover
+	
+
+.PHONY: test_ci
+# target: test_ci - Run tests command adapt for CI systems
+test_ci:
+	@python -m unittest discover
+
