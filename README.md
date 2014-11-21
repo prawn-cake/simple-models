@@ -1,5 +1,8 @@
 simple-models
 =============
+[![Build Status](https://travis-ci.org/prawn-cake/simple-models.svg?branch=master)](https://travis-ci.org/prawn-cake/simple-models)
+[![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
+
 Simple models - structured dict-like models which is useful for many tasks
 
 Notes
@@ -65,7 +68,7 @@ Installation
 
 Full documentation
 ==================
-[![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
+http://simple-models.readthedocs.org/
 
 
 Bug tracker
