@@ -8,7 +8,7 @@ class AttributeDict(dict):
     """Dict wrapper with access to keys via attributes"""
 
     def __getattr__(self, item):
-        # do not override system methods like __deepcopy__
+        # do not affect magic methods like __deepcopy__
         if item.startswith('__') and item.endswith('__'):
             return super(AttributeDict, self).__getattr__(self, item)
 
@@ -60,7 +60,7 @@ class DictEmbeddedDocument(AttributeDict):
     __metaclass__ = SimpleEmbeddedMeta
 
     def __init__(self, **kwargs):
-        kwargs = self._strip_kwargs(kwargs)
+        kwargs = self._clean_kwargs(kwargs)
         super(DictEmbeddedDocument, self).__init__(**kwargs)
         validated_fields = self._validate_fields(**kwargs)
 
@@ -109,7 +109,7 @@ class DictEmbeddedDocument(AttributeDict):
         return True
 
     @classmethod
-    def _strip_kwargs(cls, kwargs):
+    def _clean_kwargs(cls, kwargs):
         return {
             k: v for k, v in kwargs.items()
             if k in getattr(cls, '_fields', [])
@@ -123,4 +123,4 @@ class DictEmbeddedDocument(AttributeDict):
         :return: class instance
         """
         # FIXME: remove this method
-        return cls(**cls._strip_kwargs(kwargs))
+        return cls(**cls._clean_kwargs(kwargs))
