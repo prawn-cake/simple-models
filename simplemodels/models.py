@@ -36,15 +36,16 @@ class SimpleEmbeddedMeta(type):
         _fields = {}
         _required_fields = []
 
-        for obj_name, obj in dct.items():
+        # Inspect subclass to save SimpleFields and require field names
+        for item_name, obj in dct.items():
             if isinstance(obj, SimpleField):
-                _fields[obj_name] = obj
+                _fields[item_name] = obj
                 if obj.required:
-                    _required_fields.append(obj_name)
+                    _required_fields.append(item_name)
 
-                # reflect name for field
+                # set SimpleField text name as a private `_name` attribute
                 if isinstance(obj, SimpleField):
-                    obj._name = obj_name
+                    obj._name = item_name
 
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)
@@ -54,43 +55,64 @@ class SimpleEmbeddedMeta(type):
 
 class DictEmbeddedDocument(AttributeDict):
 
-    """ Alternative implementation of EmbeddedDocument for mongoengine. """
+    """ Main class to represent structured dict-like document """
 
     __metaclass__ = SimpleEmbeddedMeta
 
     def __init__(self, **kwargs):
         super(DictEmbeddedDocument, self).__init__(**kwargs)
+        validated_fields = self._validate_fields(**kwargs)
+
+        # Initialize validated fields
+        for name, value in validated_fields.items():
+            setattr(self, name, value)
+
+    def _validate_fields(self, **kwargs):
+        """Do field validations
+
+        :param kwargs:
+        :return: :raise RequiredValidationError:
+        """
         cls = type(self)
-        errors = []
+        required_fields_errors = []
 
+        from simplemodels.validators import get_validator
+
+        # Do some validations
         for field_name, obj in self._fields.items():
+            field_value = getattr(self, field_name)
+
+            # Validate requires
+            cls._validate_require(
+                field_name, field_value, required_fields_errors)
+
+            # Validate or throw ValidationError
             if field_name in kwargs:
-                from simplemodels.validators import get_validator
                 value = get_validator(obj.type).validate(kwargs[field_name])
-                setattr(self, field_name, value)
+                kwargs[field_name] = value
+                # validated_fields[field_name] = value
             else:
-                # very tricky here -- look at descriptor SimpleField
-                # this trick need for init default structure representation like
-                # Document() -> {'field_1': <value OR default value>, ...}
-                setattr(self, field_name, getattr(self, field_name))
+                kwargs[field_name] = field_value
 
-            # Check for require
-            if field_name in cls._required_fields:
-                if not getattr(self, field_name):
-                    errors.append(
-                        "Field '{}' is required for {}".format(
-                            field_name, cls.__name__)
-                    )
+        if required_fields_errors:
+            raise RequiredValidationError(str(required_fields_errors))
 
-        if errors:
-            raise RequiredValidationError(str(errors))
+        return kwargs
+
+    @classmethod
+    def _validate_require(cls, name, value, errors):
+        if name in getattr(cls, '_required_fields', []):
+            if not value:
+                errors.append("Field '{}' is required for {}".format(
+                    name, cls.__name__))
+        return True
 
     @classmethod
     def get_instance(cls, **kwargs):
-        """Return instance with exactly the same fields as described,
-        filter not described keys.
+        """Get class instance with fields according to model declaration
 
-        :param kwargs:
-        :return: cls instance
+        :param kwargs: key-value field parameters
+        :return: class instance
         """
-        return cls(**{k: v for k, v in kwargs.items() if k in cls._fields})
+        return cls(**{k: v for k, v in kwargs.items()
+                      if k in getattr(cls, '_fields', [])})
