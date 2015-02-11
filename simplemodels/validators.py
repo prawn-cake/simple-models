@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 from simplemodels.exceptions import ValidationError, ValidationTypeIsNotSupported
 from simplemodels.models import DictEmbeddedDocument
+import abc
 
 
 class AbstractValidator(object):
 
     """ Abstract validator """
 
+    __metaclass__ = abc.ABCMeta
+
     @classmethod
+    @abc.abstractmethod
     def validate(cls, value):
         """Validate method
 
@@ -22,7 +26,8 @@ class TypeValidator(AbstractValidator):
 
     @classmethod
     def using(cls, value):
-        """Override TYPE value.
+        """Method enable to override TYPE attribute.
+
         Usage:
             Validator.using(MyKlass).validate(value)
 
@@ -113,15 +118,14 @@ VALIDATORS_MAP = {
 }
 
 
-def get_validator(_type):
-    if _type in VALIDATORS_MAP:
-        return VALIDATORS_MAP[_type]
+def get_validator(type_cls):
+    if type_cls in VALIDATORS_MAP:
+        return VALIDATORS_MAP[type_cls]
 
     # determine parent class
-    if _type.__bases__[-1] == DictEmbeddedDocument:
+    if type_cls.__bases__[-1] == DictEmbeddedDocument:
         # Execute .using() to cast object class explicitly
-        return VALIDATORS_MAP[DictEmbeddedDocument].using(_type)
+        return VALIDATORS_MAP[DictEmbeddedDocument].using(type_cls)
 
     raise ValidationTypeIsNotSupported(
-        "Validation type '{}' is not supported".format(_type)
-    )
+        "Validation type '{}' is not supported".format(type_cls))

@@ -6,7 +6,7 @@ class SimpleField(object):
 
     """Class-field with descriptor for DictEmbeddedDocument"""
 
-    def __init__(self, default=None, required=False, choices=None, _type=None,
+    def __init__(self, default=None, required=False, choices=None, type=None,
                  **kwargs):
 
         """
@@ -14,12 +14,12 @@ class SimpleField(object):
         :param default: default value
         :param required: is field required
         :param choices: choices list. See utils.Choices
-        :param _type: type validation
+        :param type: type validation
         :param kwargs: for future options
         """
         self._name = None
         # For future static typing
-        self.type = _type
+        self.type = type
 
         self.default = default
         self.required = required

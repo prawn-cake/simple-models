@@ -44,7 +44,7 @@ class Address(DictEmbeddedDocument):
 
 class Person(DictEmbeddedDocument):
     name = SimpleField(required=True)
-    address = SimpleField(_type=Address)
+    address = SimpleField(type=Address)
 
 
 #### End of test classes ###
@@ -155,12 +155,12 @@ class DictEmbeddedDocumentTest(TestCase):
 
     def test_field_type(self):
         class PostAddress(DictEmbeddedDocument):
-            street = SimpleField(_type=str)
+            street = SimpleField(type=str)
 
         class ModelA(DictEmbeddedDocument):
-            id = SimpleField(_type=int)
+            id = SimpleField(type=int)
             name = SimpleField(required=True, default='TestName')
-            address = SimpleField(_type=PostAddress)
+            address = SimpleField(type=PostAddress)
 
         a = ModelA.get_instance(
             id='1', name='Maks', address=PostAddress.get_instance(street=999)

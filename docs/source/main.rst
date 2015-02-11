@@ -39,8 +39,8 @@ Simple example
 
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
-        address = SimpleField(_type=Address)
-        insurance_number = SimpleField(_type=int)  # object typing
+        address = SimpleField(type=Address)
+        insurance_number = SimpleField(type=int)  # object typing
 
 
     address = Address(street='Nevskii prospect 10')
@@ -104,12 +104,12 @@ From version 0.2.0 fields type validation is supported. See test examples below.
     from simplemodels.models import DictEmbeddedDocument
 
     class PostAddress(DictEmbeddedDocument):
-        street = SimpleField(_type=str)
+        street = SimpleField(type=str)
 
     class Person(DictEmbeddedDocument):
-        id = SimpleField(_type=int)
+        id = SimpleField(type=int)
         name = SimpleField(required=True, default='TestName')
-        address = SimpleField(_type=PostAddress)
+        address = SimpleField(type=PostAddress)
 
     person_1 = Person.get_instance(
         id='1', name='Maks', address=PostAddress.get_instance(street=999)
@@ -119,7 +119,7 @@ From version 0.2.0 fields type validation is supported. See test examples below.
         id='2', name='John', address=dict(street=999)
     )
 
-    # NOTE: take a look at 'id' and 'address.street'. All values will be caster according to '_type' parameter
+    # NOTE: take a look at 'id' and 'address.street'. All values will be caster according to 'type' parameter
     self.assertIsInstance(person_1, Person)
     self.assertEqual(person_1.id, 1)
     self.assertEqual(person_1.address.street, '999')  # type casting will be applied
@@ -131,7 +131,7 @@ Simple field
 ############
 
 There is only one field type - SimpleField.
-You can store any value here. There is way to validate type of field with '_type' parameter
+You can store any value here. There is way to validate type of field with 'type' parameter
 
 .. autoclass:: simplemodels.fields.SimpleField
     :members:
