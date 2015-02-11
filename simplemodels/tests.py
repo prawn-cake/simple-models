@@ -8,7 +8,7 @@ from simplemodels.utils import Choices
 from simplemodels.validators import VALIDATORS_MAP
 
 
-### Test classes ###
+### Test model classes ###
 
 
 class MailboxItem(DictEmbeddedDocument):
@@ -47,7 +47,7 @@ class Person(DictEmbeddedDocument):
     address = SimpleField(type=Address)
 
 
-#### End of test classes ###
+#### End of test model classes ###
 
 
 class AttributeDictTest(TestCase):
@@ -163,9 +163,12 @@ class DictEmbeddedDocumentTest(TestCase):
             address = SimpleField(type=PostAddress)
 
         a = ModelA.get_instance(
-            id='1', name='Maks', address=PostAddress.get_instance(street=999)
+            id='1',
+            name='Maks',
+            address=PostAddress.get_instance(street=999)
         )
         self.assertIsInstance(a, ModelA)
+        self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
 
@@ -174,9 +177,10 @@ class DictEmbeddedDocumentTest(TestCase):
             address={'street': 999, 'city': 'Saint-Petersburg'}
         )
         self.assertIsInstance(a, ModelA)
+        self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
-        # city is not declared Address field
+        # city is not declared as an Address field
         self.assertRaises(KeyError, getattr, a.address, 'city')
 
         # Expect a ValidationError: wrong 'address' format is passed
@@ -226,13 +230,15 @@ class ValidatorsTest(TestCase):
             number = SimpleField()
 
         value = DocumentA.get_instance(title='document1', number=1)
-        value = VALIDATORS_MAP[DictEmbeddedDocument].using(DocumentA).validate(value)
+        value = VALIDATORS_MAP[DictEmbeddedDocument].using(
+            DocumentA).validate(value)
         self.assertIsInstance(value, DocumentA)
         self.assertEqual(value.title, 'document1')
         self.assertEqual(value.number, 1)
 
         value = dict(title='document1', number=1)
-        value = VALIDATORS_MAP[DictEmbeddedDocument].using(DocumentB).validate(value)
+        value = VALIDATORS_MAP[DictEmbeddedDocument].using(
+            DocumentB).validate(value)
         self.assertIsInstance(value, DocumentB)
         self.assertEqual(value.title, 'document1')
         self.assertEqual(value.number, 1)

@@ -8,5 +8,6 @@ setup(
     license='MIT',
     author='Maksim Ekimovskii',
     author_email='ekimovsky.maksim@gmail.com',
-    description='Dict-like simple models for structure your any internal models. Useful for API or for any data which prefer to be structured '
+    description='Library for building declarative dict-like structures to get '
+                'more power and safety in your API applications'
 )
