@@ -189,6 +189,15 @@ class DictEmbeddedDocumentTest(TestCase):
             id='1', name='Maks', address=[('street', 999), ]
         )
 
+    def test_new_constructor(self):
+        class PostAddress(DictEmbeddedDocument):
+            street = SimpleField(type=str)
+
+        address_1 = PostAddress(street='Pobeda street', apartments='32')
+        address_2 = PostAddress.get_instance(
+            street='Pobeda street', apartments='32')
+        self.assertEqual(address_1, address_2)
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):

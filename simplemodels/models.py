@@ -60,6 +60,7 @@ class DictEmbeddedDocument(AttributeDict):
     __metaclass__ = SimpleEmbeddedMeta
 
     def __init__(self, **kwargs):
+        kwargs = self._strip_kwargs(kwargs)
         super(DictEmbeddedDocument, self).__init__(**kwargs)
         validated_fields = self._validate_fields(**kwargs)
 
@@ -108,11 +109,18 @@ class DictEmbeddedDocument(AttributeDict):
         return True
 
     @classmethod
+    def _strip_kwargs(cls, kwargs):
+        return {
+            k: v for k, v in kwargs.items()
+            if k in getattr(cls, '_fields', [])
+        }
+
+    @classmethod
     def get_instance(cls, **kwargs):
         """Get class instance with fields according to model declaration
 
         :param kwargs: key-value field parameters
         :return: class instance
         """
-        return cls(**{k: v for k, v in kwargs.items()
-                      if k in getattr(cls, '_fields', [])})
+        # FIXME: remove this method
+        return cls(**cls._strip_kwargs(kwargs))
