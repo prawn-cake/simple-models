@@ -46,6 +46,7 @@ class SimpleEmbeddedMeta(type):
                 # set SimpleField text name as a private `_name` attribute
                 if isinstance(obj, SimpleField):
                     obj._name = item_name
+                    obj._holder_name = name  # class holder name
 
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)
@@ -62,13 +63,13 @@ class DictEmbeddedDocument(AttributeDict):
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
         super(DictEmbeddedDocument, self).__init__(**kwargs)
-        validated_fields = self._validate_fields(**kwargs)
+        prepared_fields = self._prepare_fields(**kwargs)
 
-        # Initialize validated fields
-        for name, value in validated_fields.items():
+        # Initialize prepared fields
+        for name, value in prepared_fields.items():
             setattr(self, name, value)
 
-    def _validate_fields(self, **kwargs):
+    def _prepare_fields(self, **kwargs):
         """Do field validations
 
         :param kwargs:
@@ -76,8 +77,6 @@ class DictEmbeddedDocument(AttributeDict):
         """
         cls = type(self)
         required_fields_errors = []
-
-        from simplemodels.validators import get_validator
 
         # Do some validations
         for field_name, obj in self._fields.items():
@@ -87,12 +86,8 @@ class DictEmbeddedDocument(AttributeDict):
             cls._validate_require(
                 field_name, field_value, required_fields_errors)
 
-            # Validate or throw ValidationError
-            if field_name in kwargs:
-                value = get_validator(obj.type).validate(kwargs[field_name])
-                kwargs[field_name] = value
-                # validated_fields[field_name] = value
-            else:
+            # Build model structure
+            if field_name not in kwargs:
                 kwargs[field_name] = field_value
 
         if required_fields_errors:
@@ -123,4 +118,8 @@ class DictEmbeddedDocument(AttributeDict):
         :return: class instance
         """
         # FIXME: remove this method
+        return cls(**cls._clean_kwargs(kwargs))
+
+    @classmethod
+    def from_dict(cls, kwargs):
         return cls(**cls._clean_kwargs(kwargs))

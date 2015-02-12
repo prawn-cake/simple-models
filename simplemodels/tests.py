@@ -198,6 +198,30 @@ class DictEmbeddedDocumentTest(TestCase):
             street='Pobeda street', apartments='32')
         self.assertEqual(address_1, address_2)
 
+    def test_model_with_validator(self):
+        class Timestamp(DictEmbeddedDocument):
+            hour = SimpleField(validator=int)
+            minute = SimpleField(validator=int)
+
+        class Moment(DictEmbeddedDocument):
+            start_date = SimpleField(
+                validator=lambda value: datetime.strptime(
+                    value, '%Y-%m-%dT%H:%M:%SZ'))
+            count = SimpleField(validator=int)
+            timestamp = SimpleField(validator=Timestamp.from_dict)
+            ts = SimpleField(validator=Timestamp.from_dict)
+
+        moment = Moment(
+            start_date='2009-04-01T23:51:23Z',
+            count='1',
+            timestamp=dict(hour=10, minute=59),
+            ts=Timestamp(hour=10, minute=59)
+        )
+        self.assertIsInstance(moment.start_date, datetime)
+        self.assertIsInstance(moment.count, int)
+        self.assertIsInstance(moment.timestamp, Timestamp)
+        self.assertIsInstance(moment.ts, Timestamp)
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
@@ -256,3 +280,38 @@ class ValidatorsTest(TestCase):
             ValidationError, VALIDATORS_MAP[DictEmbeddedDocument].validate,
             ['invalid parameter']
         )
+
+    def test_datetime_validator(self):
+        # FIXME: DEPRECATED
+        json_value = '2009-04-01T23:51:23Z'
+        iso8601_value = '2009-04-01T23:51:23'
+        iso_date_value = '2009-04-01'
+        iso_time_value = '23:51:23'
+        custom_c_value = 'Tue Aug 16 21:30:00 1988'
+
+        validator = VALIDATORS_MAP['datetime']
+
+        # test default format
+        self.assertIsInstance(validator.validate(json_value), datetime)
+
+        # test templates
+        self.assertIsInstance(
+            validator.validate(json_value, dt_template='json'),
+            datetime)
+
+        self.assertIsInstance(
+            validator.validate(iso8601_value, dt_template='iso8601'),
+            datetime)
+
+        self.assertIsInstance(
+            validator.validate(iso_date_value, dt_template='iso_date'),
+            datetime)
+
+        self.assertIsInstance(
+            validator.validate(iso_time_value, dt_template='iso_time'),
+            datetime)
+
+        # test custom format
+        self.assertIsInstance(
+            validator.validate(custom_c_value, format='%c'),
+            datetime)
