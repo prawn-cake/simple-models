@@ -10,7 +10,7 @@ Description
 Simple models allow to make structured dict-like (json serializable) models for your application.
 
 Main goals
------------
+----------
 
 * Make declarative structures based on dict -- easy to understand, convenient to support;
 * Implement structured data models with low coupling -- use anywhere;
@@ -73,7 +73,7 @@ Simple example
 
 
     # correct behaviour
-    >>> person = Person(name='Max', address=Address.get_instance(street='Nevskii prospect 10'), insurance_number='111')
+    >>> person = Person(name='Max', address=Address(street='Nevskii prospect 10'), insurance_number='111')
     >>> person
     {'name': 'Max', 'address': {'city': 'Saint-Petersburg', 'street': 'Nevskii prospect 10'}, 'insurance_number': 111}
 
@@ -92,11 +92,26 @@ Simple example
     True
 
 
-Fields type validation
-----------------------
+Simple field
+############
+
+There is only one field type - SimpleField which stores any value.
+You can add require or/and validation for it
+
+.. autoclass:: simplemodels.fields.SimpleField
+    :members:
+    :private-members:
+    :special-members:
+
+
+Fields type validation and validators
+-------------------------------------
 
 From version 0.2.0 fields type validation is supported. See test examples below.
 
+From version 0.2.1:
+ * old validation ways with `type` are **DEPRECATED**. Use `validator` instead (see below)
+ * `DictEmbeddedDocument.get_instance` method is **DEPRECATED**, use direct constructor instead
 
 .. code-block:: python
 
@@ -111,15 +126,11 @@ From version 0.2.0 fields type validation is supported. See test examples below.
         name = SimpleField(required=True, default='TestName')
         address = SimpleField(type=PostAddress)
 
-    person_1 = Person.get_instance(
-        id='1', name='Maks', address=PostAddress.get_instance(street=999)
-    )
+    person_1 = Person(id='1', name='Maks', address=PostAddress(street=999))
 
-    person_2 = Person.get_instance(
-        id='2', name='John', address=dict(street=999)
-    )
+    person_2 = Person(id='2', name='John', address=dict(street=999))
 
-    # NOTE: take a look at 'id' and 'address.street'. All values will be caster according to 'type' parameter
+    # NOTE: take a look at `id` and `address.street`. All values will be casted to selected `type`
     self.assertIsInstance(person_1, Person)
     self.assertEqual(person_1.id, 1)
     self.assertEqual(person_1.address.street, '999')  # type casting will be applied
@@ -127,13 +138,24 @@ From version 0.2.0 fields type validation is supported. See test examples below.
     self.assertEqual(person_2.address.street, '999')  # type casting will be applied for dict value as well
 
 
-Simple field
-############
+New field validation (starts from 0.2.1)
+----------------------------------------
 
-There is only one field type - SimpleField.
-You can store any value here. There is way to validate type of field with 'type' parameter
+New `validator` attribute has been added to SimpleField:
 
-.. autoclass:: simplemodels.fields.SimpleField
-    :members:
-    :private-members:
-    :special-members:
+* It must be callable
+* Use method `from_dict` for related `DictEmbeddedDocument` models
+
+
+.. code-block:: python
+
+    class PostAddress(DictEmbeddedDocument):
+        city = SimpleField(validator=str)  # same behaviour as previous
+        delivery_date = SimpleField(       # advanced validator for datetime or whatever
+            validator=lambda value: datetime.strptime(
+                value, '%Y-%m-%dT%H:%M:%SZ'))
+
+    class Package(DictEmbeddedDocument):
+        id = SimpleField(validator=int)
+        address = SimpleField(validator=PostAddress.from_dict)  # validate address
+
