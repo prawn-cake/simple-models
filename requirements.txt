@@ -1,0 +1,2 @@
+# test related packages
+coverage==3.7.1

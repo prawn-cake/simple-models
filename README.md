@@ -23,6 +23,8 @@ Convenient way to declare your structured data
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
         address = SimpleField(validator=Address.from_dict)  # related model validation
+        date_of_birth = SimpleField(
+            validator=lambda value: datetime.strptime(value, '%Y-%m-%d')))
 
 
     address = Address(street='Nevskii prospect 10')
