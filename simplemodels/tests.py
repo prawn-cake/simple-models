@@ -5,10 +5,10 @@ from simplemodels.exceptions import ValidationError
 from simplemodels.fields import SimpleField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
-from simplemodels.validators import VALIDATORS_MAP
+from simplemodels.validators import get_validator
 
 
-### Test classes ###
+### Test model classes ###
 
 
 class MailboxItem(DictEmbeddedDocument):
@@ -44,10 +44,10 @@ class Address(DictEmbeddedDocument):
 
 class Person(DictEmbeddedDocument):
     name = SimpleField(required=True)
-    address = SimpleField(_type=Address)
+    address = SimpleField(type=Address)
 
 
-#### End of test classes ###
+#### End of test model classes ###
 
 
 class AttributeDictTest(TestCase):
@@ -155,17 +155,20 @@ class DictEmbeddedDocumentTest(TestCase):
 
     def test_field_type(self):
         class PostAddress(DictEmbeddedDocument):
-            street = SimpleField(_type=str)
+            street = SimpleField(type=str)
 
         class ModelA(DictEmbeddedDocument):
-            id = SimpleField(_type=int)
+            id = SimpleField(type=int)
             name = SimpleField(required=True, default='TestName')
-            address = SimpleField(_type=PostAddress)
+            address = SimpleField(type=PostAddress)
 
         a = ModelA.get_instance(
-            id='1', name='Maks', address=PostAddress.get_instance(street=999)
+            id='1',
+            name='Maks',
+            address=PostAddress.get_instance(street=999)
         )
         self.assertIsInstance(a, ModelA)
+        self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
 
@@ -174,9 +177,10 @@ class DictEmbeddedDocumentTest(TestCase):
             address={'street': 999, 'city': 'Saint-Petersburg'}
         )
         self.assertIsInstance(a, ModelA)
+        self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
-        # city is not declared Address field
+        # city is not declared as an Address field
         self.assertRaises(KeyError, getattr, a.address, 'city')
 
         # Expect a ValidationError: wrong 'address' format is passed
@@ -184,6 +188,41 @@ class DictEmbeddedDocumentTest(TestCase):
             ValidationError, ModelA.get_instance,
             id='1', name='Maks', address=[('street', 999), ]
         )
+
+    def test_new_constructor(self):
+        class PostAddress(DictEmbeddedDocument):
+            street = SimpleField(type=str)
+
+        address_1 = PostAddress(street='Pobeda street', apartments='32')
+        address_2 = PostAddress.get_instance(
+            street='Pobeda street', apartments='32')
+        self.assertEqual(address_1, address_2)
+
+    def test_model_with_validator(self):
+        class Timestamp(DictEmbeddedDocument):
+            hour = SimpleField(validator=int)
+            minute = SimpleField(validator=int)
+
+        class Moment(DictEmbeddedDocument):
+            start_date = SimpleField(
+                validator=lambda value: datetime.strptime(
+                    value, '%Y-%m-%dT%H:%M:%SZ'))
+            count = SimpleField(validator=int)
+            timestamp = SimpleField(validator=Timestamp.from_dict)
+            ts = SimpleField(validator=Timestamp.from_dict)
+
+        moment = Moment(
+            start_date='2009-04-01T23:51:23Z',
+            count='1',
+            timestamp=dict(hour=10, minute=59),
+            ts=Timestamp(hour=10, minute=59)
+        )
+        self.assertIsInstance(moment.start_date, datetime)
+        self.assertIsInstance(moment.count, int)
+        self.assertIsInstance(moment.timestamp, Timestamp)
+        self.assertIsInstance(moment.ts, Timestamp)
+
+        self.assertRaises(ValidationError, Moment, count='a')
 
 
 class ValidationTest(TestCase):
@@ -198,23 +237,23 @@ class ValidationTest(TestCase):
 class ValidatorsTest(TestCase):
     def test_null_validator(self):
         value = 10
-        value = VALIDATORS_MAP[None].validate(value)
+        value = get_validator(None).validate(value)
         # expect validator nothing to do and return value as-is
         self.assertEqual(value, 10)
 
     def test_str_validator(self):
         value = 10
-        value = VALIDATORS_MAP[str].validate(value)
+        value = get_validator(str).validate(value)
         # expect converted to str value
         self.assertEqual(value, '10')
 
     def test_int_validator(self):
         value = 10
-        value = VALIDATORS_MAP[int].validate(value)
+        value = get_validator(int).validate(value)
         self.assertEqual(value, 10)
         # Expect an error
         value = 'aa'
-        self.assertRaises(ValidationError, VALIDATORS_MAP[int].validate, value)
+        self.assertRaises(ValidationError, get_validator(int).validate, value)
 
     def test_dict_embedded_document_validator(self):
         class DocumentA(DictEmbeddedDocument):
@@ -226,18 +265,55 @@ class ValidatorsTest(TestCase):
             number = SimpleField()
 
         value = DocumentA.get_instance(title='document1', number=1)
-        value = VALIDATORS_MAP[DictEmbeddedDocument].using(DocumentA).validate(value)
+        value = get_validator(DictEmbeddedDocument).using(
+            DocumentA).validate(value)
         self.assertIsInstance(value, DocumentA)
         self.assertEqual(value.title, 'document1')
         self.assertEqual(value.number, 1)
 
         value = dict(title='document1', number=1)
-        value = VALIDATORS_MAP[DictEmbeddedDocument].using(DocumentB).validate(value)
+        value = get_validator(DictEmbeddedDocument).using(
+            DocumentB).validate(value)
         self.assertIsInstance(value, DocumentB)
         self.assertEqual(value.title, 'document1')
         self.assertEqual(value.number, 1)
 
         self.assertRaises(
-            ValidationError, VALIDATORS_MAP[DictEmbeddedDocument].validate,
+            ValidationError, get_validator(DictEmbeddedDocument).validate,
             ['invalid parameter']
         )
+
+    def test_datetime_validator(self):
+        # FIXME: DEPRECATED
+        json_value = '2009-04-01T23:51:23Z'
+        iso8601_value = '2009-04-01T23:51:23'
+        iso_date_value = '2009-04-01'
+        iso_time_value = '23:51:23'
+        custom_c_value = 'Tue Aug 16 21:30:00 1988'
+
+        validator = get_validator('datetime')
+
+        # test default format
+        self.assertIsInstance(validator.validate(json_value), datetime)
+
+        # test templates
+        self.assertIsInstance(
+            validator.validate(json_value, dt_template='json'),
+            datetime)
+
+        self.assertIsInstance(
+            validator.validate(iso8601_value, dt_template='iso8601'),
+            datetime)
+
+        self.assertIsInstance(
+            validator.validate(iso_date_value, dt_template='iso_date'),
+            datetime)
+
+        self.assertIsInstance(
+            validator.validate(iso_time_value, dt_template='iso_time'),
+            datetime)
+
+        # test custom format
+        self.assertIsInstance(
+            validator.validate(custom_c_value, format='%c'),
+            datetime)

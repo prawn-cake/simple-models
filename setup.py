@@ -2,11 +2,12 @@ from distutils.core import setup
 
 setup(
     name='simple-models',
-    version='0.2.0',
+    version='0.2.1',
     packages=['simplemodels'],
     url='https://github.com/prawn-cake/simple-models',
     license='MIT',
     author='Maksim Ekimovskii',
     author_email='ekimovsky.maksim@gmail.com',
-    description='Dict-like simple models for structure your any internal models. Useful for API or for any data which prefer to be structured '
+    description='Library for building declarative dict-like structures to get '
+                'more power and safety in your API applications'
 )
