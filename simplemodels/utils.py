@@ -24,31 +24,31 @@ class Choices(object):
             self._choices.append((choice[0], choice[2]))
             self._choice_dict[choice[1]] = choice[0]
 
-    def __getattr__(self, attname):
+    def __getattr__(self, attname):  # pragma: no cover
         try:
             return self._choice_dict[attname]
         except KeyError:
             raise AttributeError(attname)
 
-    def __iter__(self):
+    def __iter__(self):  # pragma: no cover
         return iter(self._choices)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index):  # pragma: no cover
         return self._choices[index]
 
-    def __delitem__(self, index):
+    def __delitem__(self, index):  # pragma: no cover
         del self._choices[index]
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index, value):  # pragma: no cover
         self._choices[index] = value
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return "{0}({1})".format(
             self.__class__.__name__,
             self._choices
         )
 
-    def __len__(self):
+    def __len__(self):  # pragma: no cover
         return len(self._choices)
 
 

@@ -5,7 +5,7 @@ from simplemodels.exceptions import ValidationError
 from simplemodels.fields import SimpleField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
-from simplemodels.validators import VALIDATORS_MAP
+from simplemodels.validators import get_validator
 
 
 ### Test model classes ###
@@ -222,6 +222,8 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertIsInstance(moment.timestamp, Timestamp)
         self.assertIsInstance(moment.ts, Timestamp)
 
+        self.assertRaises(ValidationError, Moment, count='a')
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
@@ -235,23 +237,23 @@ class ValidationTest(TestCase):
 class ValidatorsTest(TestCase):
     def test_null_validator(self):
         value = 10
-        value = VALIDATORS_MAP[None].validate(value)
+        value = get_validator(None).validate(value)
         # expect validator nothing to do and return value as-is
         self.assertEqual(value, 10)
 
     def test_str_validator(self):
         value = 10
-        value = VALIDATORS_MAP[str].validate(value)
+        value = get_validator(str).validate(value)
         # expect converted to str value
         self.assertEqual(value, '10')
 
     def test_int_validator(self):
         value = 10
-        value = VALIDATORS_MAP[int].validate(value)
+        value = get_validator(int).validate(value)
         self.assertEqual(value, 10)
         # Expect an error
         value = 'aa'
-        self.assertRaises(ValidationError, VALIDATORS_MAP[int].validate, value)
+        self.assertRaises(ValidationError, get_validator(int).validate, value)
 
     def test_dict_embedded_document_validator(self):
         class DocumentA(DictEmbeddedDocument):
@@ -263,21 +265,21 @@ class ValidatorsTest(TestCase):
             number = SimpleField()
 
         value = DocumentA.get_instance(title='document1', number=1)
-        value = VALIDATORS_MAP[DictEmbeddedDocument].using(
+        value = get_validator(DictEmbeddedDocument).using(
             DocumentA).validate(value)
         self.assertIsInstance(value, DocumentA)
         self.assertEqual(value.title, 'document1')
         self.assertEqual(value.number, 1)
 
         value = dict(title='document1', number=1)
-        value = VALIDATORS_MAP[DictEmbeddedDocument].using(
+        value = get_validator(DictEmbeddedDocument).using(
             DocumentB).validate(value)
         self.assertIsInstance(value, DocumentB)
         self.assertEqual(value.title, 'document1')
         self.assertEqual(value.number, 1)
 
         self.assertRaises(
-            ValidationError, VALIDATORS_MAP[DictEmbeddedDocument].validate,
+            ValidationError, get_validator(DictEmbeddedDocument).validate,
             ['invalid parameter']
         )
 
@@ -289,7 +291,7 @@ class ValidatorsTest(TestCase):
         iso_time_value = '23:51:23'
         custom_c_value = 'Tue Aug 16 21:30:00 1988'
 
-        validator = VALIDATORS_MAP['datetime']
+        validator = get_validator('datetime')
 
         # test default format
         self.assertIsInstance(validator.validate(json_value), datetime)
