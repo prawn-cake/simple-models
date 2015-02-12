@@ -5,27 +5,6 @@ simple-models
 
 Simple models - structured dict-like models which is useful for many tasks
 
-Notes
-======
-From version 0.2.0 the following functionality is not supported:
-
- **link_cls** SimpleField attribute was replaced with universal type validation
-
-
-    class Address(DictEmbeddedDocument):
-        ...
-
-
-
-    class Person(DictEmbeddedDocument):
-        name = SimpleField(required=True)
-        address = SimpleField(link_cls=Address)
-
-
-    # starts from 0.2.0 universal type validation should be used instead
-    class Person(DictEmbeddedDocument):
-        name = SimpleField(required=True)
-        address = SimpleField(_type=Address)
 
 Quick start
 ===========
@@ -38,12 +17,12 @@ Convenient way to declare your structured data
 
     class Address(DictEmbeddedDocument):
         city = SimpleField(default='Saint-Petersburg')
-        street = SimpleField(required=True)
+        street = SimpleField(required=True, validator=str)
 
 
     class Person(DictEmbeddedDocument):
         name = SimpleField(required=True)
-        address = SimpleField(_type=Address)  # object typing
+        address = SimpleField(validator=Address.from_dict)  # related model validation
 
 
     address = Address(street='Nevskii prospect 10')
