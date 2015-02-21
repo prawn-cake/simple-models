@@ -7,7 +7,8 @@ import abc
 import six
 
 
-class AbstractValidator(six.with_metaclass(abc.ABCMeta, object)):
+@six.add_metaclass(abc.ABCMeta)
+class AbstractValidator(object):
 
     """ Abstract validator """
 

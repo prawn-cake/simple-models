@@ -55,7 +55,8 @@ class SimpleEmbeddedMeta(type):
         return super(SimpleEmbeddedMeta, mcs).__new__(mcs, name, parents, dct)
 
 
-class DictEmbeddedDocument(six.with_metaclass(SimpleEmbeddedMeta, AttributeDict)):
+@six.add_metaclass(SimpleEmbeddedMeta)
+class DictEmbeddedDocument(AttributeDict):
 
     """ Main class to represent structured dict-like document """
 
