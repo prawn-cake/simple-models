@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from simplemodels.exceptions import ValidationError, ValidationTypeIsNotSupported
+from simplemodels.exceptions import (
+    ValidationError, ValidationTypeIsNotSupported)
 from simplemodels.models import DictEmbeddedDocument
 import abc
+import six
 
 
-class AbstractValidator(object):
+class AbstractValidator(six.with_metaclass(abc.ABCMeta, object)):
 
     """ Abstract validator """
-
-    __metaclass__ = abc.ABCMeta
 
     @classmethod
     @abc.abstractmethod

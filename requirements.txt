@@ -1,2 +1,5 @@
 # test related packages
 coverage==3.7.1
+
+# Python 2 to 3 compatibility
+six==1.9.0

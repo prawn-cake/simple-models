@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
 from simplemodels.exceptions import ValidationError
+import six
 
 
 class SimpleField(object):
@@ -68,7 +69,7 @@ class SimpleField(object):
         instance.__dict__[self._name] = value
 
     def __repr__(self):
-        return unicode("{}.{}".format(self._holder_name, self._name))
+        return six.u("{}.{}".format(self._holder_name, self._name))
 
     def __unicode__(self):
-        return unicode("{}.{}".format(self._holder_name, self._name))
+        return six.u("{}.{}".format(self._holder_name, self._name))

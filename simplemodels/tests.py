@@ -6,6 +6,7 @@ from simplemodels.fields import SimpleField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
 from simplemodels.validators import get_validator
+import six
 
 
 ### Test model classes ###
@@ -30,11 +31,11 @@ class MailboxItem(DictEmbeddedDocument):
             self.received_at = datetime.now()
 
     def __repr__(self):
-        return unicode("<{}({}): {}>".format(
+        return six.u("<{}({}): {}>".format(
             self.__class__.__name__, self.type, self.subject))
 
     def __unicode__(self):
-        return unicode("<{}({}): {}>".format(
+        return six.u("<{}({}): {}>".format(
             self.__class__.__name__, self.type, self.subject))
 
 

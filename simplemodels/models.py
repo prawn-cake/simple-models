@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from simplemodels.exceptions import RequiredValidationError
 from simplemodels.fields import SimpleField
+import six
 
 
 class AttributeDict(dict):
@@ -54,11 +55,9 @@ class SimpleEmbeddedMeta(type):
         return super(SimpleEmbeddedMeta, mcs).__new__(mcs, name, parents, dct)
 
 
-class DictEmbeddedDocument(AttributeDict):
+class DictEmbeddedDocument(six.with_metaclass(SimpleEmbeddedMeta, AttributeDict)):
 
     """ Main class to represent structured dict-like document """
-
-    __metaclass__ = SimpleEmbeddedMeta
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
