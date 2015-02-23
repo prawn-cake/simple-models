@@ -11,6 +11,7 @@ help:
 env:
 # target: env - create virtualenv and install packages
 	@virtualenv $(ENV_DIR)
+	@$(ENV_DIR)/bin/pip install -r $(CURDIR)/requirements.txt
 
 .PHONY: pypi_upload
 pypi_upload:
