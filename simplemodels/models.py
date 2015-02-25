@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from simplemodels.exceptions import RequiredValidationError
 from simplemodels.fields import SimpleField
+import six
 
 
 class AttributeDict(dict):
@@ -54,11 +55,10 @@ class SimpleEmbeddedMeta(type):
         return super(SimpleEmbeddedMeta, mcs).__new__(mcs, name, parents, dct)
 
 
+@six.add_metaclass(SimpleEmbeddedMeta)
 class DictEmbeddedDocument(AttributeDict):
 
     """ Main class to represent structured dict-like document """
-
-    __metaclass__ = SimpleEmbeddedMeta
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
@@ -98,7 +98,7 @@ class DictEmbeddedDocument(AttributeDict):
     @classmethod
     def _validate_require(cls, name, value, errors):
         if name in getattr(cls, '_required_fields', []):
-            if not value:
+            if value is None or value == '':
                 errors.append("Field '{}' is required for {}".format(
                     name, cls.__name__))
         return True
@@ -122,4 +122,10 @@ class DictEmbeddedDocument(AttributeDict):
 
     @classmethod
     def from_dict(cls, kwargs):
+        """Create model instance from dict or from another model for nested
+        fields
+
+        :param kwargs:
+        :return:
+        """
         return cls(**cls._clean_kwargs(kwargs))

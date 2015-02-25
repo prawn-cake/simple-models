@@ -2,6 +2,7 @@ simple-models
 =============
 [![Build Status](https://travis-ci.org/prawn-cake/simple-models.svg?branch=master)](https://travis-ci.org/prawn-cake/simple-models)
 [![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
+[![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg)](https://coveralls.io/r/prawn-cake/simple-models)
 
 Simple models - structured dict-like models which is useful for many tasks
 

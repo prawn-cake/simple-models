@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
 from simplemodels.exceptions import ValidationError
+import six
 
 
 class SimpleField(object):
@@ -33,6 +34,9 @@ class SimpleField(object):
         self.choices = choices
 
         self.validator = validator
+
+        # FIXME: DEPRECATED validators, leave only one callable validator
+        # parameter above
         # Get built-in validator if not provided
         if validator is None or not hasattr(validator, '__call__'):
             from simplemodels.validators import get_validator
@@ -68,7 +72,7 @@ class SimpleField(object):
         instance.__dict__[self._name] = value
 
     def __repr__(self):
-        return unicode("{}.{}".format(self._holder_name, self._name))
+        return six.u("{}.{}".format(self._holder_name, self._name))
 
     def __unicode__(self):
-        return unicode("{}.{}".format(self._holder_name, self._name))
+        return six.u("{}.{}".format(self._holder_name, self._name))

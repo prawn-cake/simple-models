@@ -1,0 +1,4 @@
+include Makefile
+include LICENSE
+include requirements.txt
+include *.py

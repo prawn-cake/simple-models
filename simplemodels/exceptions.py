@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import six
 
 
 class ValidationError(Exception):
@@ -6,7 +7,7 @@ class ValidationError(Exception):
     """ Custom exception class. Useful for validation methods """
 
     def __unicode__(self):
-        return unicode(self.message)
+        return six.u(self.message)
 
 
 class RequiredValidationError(ValidationError):
