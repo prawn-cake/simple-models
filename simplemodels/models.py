@@ -98,7 +98,7 @@ class DictEmbeddedDocument(AttributeDict):
     @classmethod
     def _validate_require(cls, name, value, errors):
         if name in getattr(cls, '_required_fields', []):
-            if not value:
+            if value is None or value == '':
                 errors.append("Field '{}' is required for {}".format(
                     name, cls.__name__))
         return True
@@ -122,4 +122,10 @@ class DictEmbeddedDocument(AttributeDict):
 
     @classmethod
     def from_dict(cls, kwargs):
+        """Create model instance from dict or from another model for nested
+        fields
+
+        :param kwargs:
+        :return:
+        """
         return cls(**cls._clean_kwargs(kwargs))

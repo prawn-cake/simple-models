@@ -34,6 +34,9 @@ class SimpleField(object):
         self.choices = choices
 
         self.validator = validator
+
+        # FIXME: DEPRECATED validators, leave only one callable validator
+        # parameter above
         # Get built-in validator if not provided
         if validator is None or not hasattr(validator, '__call__'):
             from simplemodels.validators import get_validator

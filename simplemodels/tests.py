@@ -229,12 +229,10 @@ class DictEmbeddedDocumentTest(TestCase):
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
         street = 'Pagoda street'
-        self.assertRaises(
-            ValidationError,
-            Person.get_instance, address=street
-        )
+        self.assertRaises(ValidationError, Person, address=street)
 
 
+# FIXME: deprecated
 class ValidatorsTest(TestCase):
     def test_null_validator(self):
         value = 10
@@ -318,3 +316,15 @@ class ValidatorsTest(TestCase):
         self.assertIsInstance(
             validator.validate(custom_c_value, format='%c'),
             datetime)
+
+    def test_validator_option(self):
+        class User(DictEmbeddedDocument):
+            id = SimpleField(validator=int)
+            name = SimpleField(validator=six.u)  # unicode
+            is_logged = SimpleField(
+                validator=bool, default=False, required=True)
+
+        user = User(id='1', name='Mark')
+        self.assertEqual(user.id, 1)
+        self.assertIsInstance(user.name, unicode)
+        self.assertEqual(user.is_logged, False)
