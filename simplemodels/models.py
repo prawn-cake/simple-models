@@ -70,7 +70,7 @@ class DictEmbeddedDocument(AttributeDict):
             setattr(self, name, value)
 
     def _prepare_fields(self, **kwargs):
-        """Do field validations
+        """Do field validations and set defaults
 
         :param kwargs:
         :return: :raise RequiredValidationError:
@@ -80,7 +80,11 @@ class DictEmbeddedDocument(AttributeDict):
 
         # Do some validations
         for field_name, obj in self._fields.items():
-            field_value = getattr(self, field_name)
+            field_value = self.get(field_name)
+
+            # Set default value if
+            if (field_value is None or field_value == '') and obj.has_default():
+                field_value = getattr(obj, 'default')
 
             # Validate requires
             cls._validate_require(
