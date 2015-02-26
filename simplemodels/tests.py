@@ -102,9 +102,11 @@ class DictEmbeddedDocumentTest(TestCase):
     def test_simple_field_default(self):
         class A(DictEmbeddedDocument):
             f = SimpleField(default=10)
+            l = SimpleField(default=list)
 
         a = A()
         self.assertEqual(a.f, 10)
+        self.assertEqual(a.l, [])
 
     def test_simple_field_required(self):
         class TestDictDocument(DictEmbeddedDocument):

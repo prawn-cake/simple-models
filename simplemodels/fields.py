@@ -9,7 +9,7 @@ class SimpleField(object):
     """Class-field with descriptor for DictEmbeddedDocument"""
 
     def __init__(self, default=None, required=False, choices=None, type=None,
-                 validator=None, **kwargs):
+                 validator=None, error_text='', **kwargs):
         """
 
         :param default: default value
@@ -17,6 +17,7 @@ class SimpleField(object):
         :param choices: choices list. See utils.Choices
         :param type: type validation
         :param validator: enhanced type validation with callable object
+        :param error_text: return with validation error, helps to debug
         :param kwargs: for future options
         """
 
@@ -27,7 +28,8 @@ class SimpleField(object):
         # FIXME: Remove type, use only callable validator instead
         self.type = type
 
-        self.default = default
+        self.default = default() if callable(default) else default
+
         self.required = required
 
         # TODO: support choices validation
@@ -35,9 +37,11 @@ class SimpleField(object):
 
         self.validator = validator
 
+        self.error_text = error_text
+
         # FIXME: DEPRECATED validators, in future use only one callable validator
         # Get built-in validator if not provided
-        if validator is None or not hasattr(validator, '__call__'):
+        if validator is None or not callable(validator):
             from simplemodels.validators import get_validator
             self.validator = get_validator(self.type)
 
@@ -60,8 +64,8 @@ class SimpleField(object):
             try:
                 return self.validator(value)
             except ValueError:
-                raise ValidationError("Wrong value '{}' for field `{}`".format(
-                    value, self))
+                raise ValidationError("Wrong value '{}' for field `{}`. {}"
+                                      "".format(value, self, self.error_text))
 
     def has_default(self):
         return self.default is not None
