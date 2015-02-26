@@ -24,7 +24,7 @@ class SimpleField(object):
         self._holder_name = None
 
         # For future static typing
-        # FIXME: Remove type, use only validator instead
+        # FIXME: Remove type, use only callable validator instead
         self.type = type
 
         self.default = default
@@ -35,8 +35,7 @@ class SimpleField(object):
 
         self.validator = validator
 
-        # FIXME: DEPRECATED validators, leave only one callable validator
-        # parameter above
+        # FIXME: DEPRECATED validators, in future use only one callable validator
         # Get built-in validator if not provided
         if validator is None or not hasattr(validator, '__call__'):
             from simplemodels.validators import get_validator
@@ -63,6 +62,9 @@ class SimpleField(object):
             except ValueError:
                 raise ValidationError("Wrong value '{}' for field `{}`".format(
                     value, self))
+
+    def has_default(self):
+        return self.default is not None
 
     def __get__(self, instance, owner):
         return instance.__dict__.get(self._name, self.default)

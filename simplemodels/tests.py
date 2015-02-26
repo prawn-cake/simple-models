@@ -57,6 +57,8 @@ class AttributeDictTest(TestCase):
         ad = AttributeDict()
         ad._id = 1
         self.assertEqual(ad['_id'], 1)
+        self.assertEqual(ad._id, 1)
+        self.assertEqual(getattr(ad, '_id'), 1)
 
     def test_system_methods(self):
         from copy import deepcopy
@@ -109,6 +111,9 @@ class DictEmbeddedDocumentTest(TestCase):
             xsi_type = SimpleField(required=True)
 
         self.assertRaises(ValidationError, TestDictDocument)
+        self.assertRaises(ValidationError, TestDictDocument, xsi_type='')
+        self.assertRaises(ValidationError, TestDictDocument, xsi_type=None)
+        self.assertTrue(TestDictDocument(xsi_type='html'))
 
     def test_default_values_with_several_instances(self):
         td = MailboxItem()

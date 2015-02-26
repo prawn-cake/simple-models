@@ -42,6 +42,7 @@ class TypeValidator(AbstractValidator):
 
     @classmethod
     def _clean_validate(cls):
+        # FIXME: DEPRECATED
         backup_type = getattr(cls, '__BACKUP_TYPE', None)
         if backup_type:
             setattr(cls, 'TYPE', backup_type)
