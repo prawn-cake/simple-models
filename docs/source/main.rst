@@ -159,3 +159,30 @@ New `validator` attribute has been added to SimpleField:
         id = SimpleField(validator=int)
         address = SimpleField(validator=PostAddress.from_dict)  # validate address
 
+
+Optional field name (starts from 0.2.4)
+---------------------------------------
+
+Feature enables to use optional field name with custom characters.
+
+.. code-block:: python
+
+    class MyModel(DictEmbeddedDocument):
+        InterestRate = SimpleField(validator=float,
+                                   name='Interest Rate',
+                                   required=True)
+        ...
+
+
+This will match a message like
+
+.. code-block:: python
+
+    {
+        "Country": "Germany",
+        "Currency": "EUR",
+        "GDP": "34,388",
+        "Inflation": "2.2",
+        "Interest Rate": "1.01",
+        "Population": "80,767,000"
+    }
