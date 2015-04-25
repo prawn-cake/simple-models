@@ -2,16 +2,21 @@
 import six
 
 
-class ValidationError(Exception):
+__all__ = [
+    'ValidationError',
+    'ValidationRequiredError',
+    'ValidationTypeIsNotSupported'
+]
 
+
+class ValidationError(Exception):
     """ Custom exception class. Useful for validation methods """
 
     def __unicode__(self):
         return six.u(self.message)
 
 
-class RequiredValidationError(ValidationError):
-
+class ValidationRequiredError(ValidationError):
     """ Raised when required field is not found """
 
     pass
