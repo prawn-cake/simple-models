@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='simple-models',
-    version='0.2.3',
+    version='0.2.4',
     packages=['simplemodels'],
     url='https://github.com/prawn-cake/simple-models',
     license='MIT',
