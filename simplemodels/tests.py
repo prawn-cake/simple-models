@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 from datetime import datetime
-from simplemodels.exceptions import ValidationError
+from simplemodels.exceptions import ValidationError, ValidationRequiredError
 from simplemodels.fields import SimpleField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
@@ -112,9 +112,11 @@ class DictEmbeddedDocumentTest(TestCase):
         class TestDictDocument(DictEmbeddedDocument):
             xsi_type = SimpleField(required=True)
 
-        self.assertRaises(ValidationError, TestDictDocument)
-        self.assertRaises(ValidationError, TestDictDocument, xsi_type='')
-        self.assertRaises(ValidationError, TestDictDocument, xsi_type=None)
+        self.assertRaises(ValidationRequiredError, TestDictDocument)
+        self.assertRaises(
+            ValidationRequiredError, TestDictDocument, xsi_type='')
+        self.assertRaises(
+            ValidationRequiredError, TestDictDocument, xsi_type=None)
         self.assertTrue(TestDictDocument(xsi_type='html'))
 
     def test_default_values_with_several_instances(self):
@@ -193,7 +195,7 @@ class DictEmbeddedDocumentTest(TestCase):
 
         # Expect a ValidationError: wrong 'address' format is passed
         self.assertRaises(
-            ValidationError, ModelA.get_instance,
+            ValidationError, ModelA,
             id='1', name='Maks', address=[('street', 999), ]
         )
 
@@ -231,6 +233,30 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertIsInstance(moment.ts, Timestamp)
 
         self.assertRaises(ValidationError, Moment, count='a')
+
+    def test_model_optional_name(self):
+        class MyModel(DictEmbeddedDocument):
+            InterestRate = SimpleField(validator=float, name='Interest Rate')
+
+        data = {"Interest Rate": "1.01"}
+        my_model = MyModel.get_instance(**data)
+        self.assertEqual(len(my_model), 1)
+        self.assertEqual(my_model.InterestRate, 1.01)
+
+        my_model = MyModel(**data)
+        self.assertEqual(len(my_model), 1)
+        self.assertEqual(my_model.InterestRate, 1.01)
+        self.assertEqual(my_model['Interest Rate'], 1.01)
+
+    def test_model_optional_name_required(self):
+        class MyModel2(DictEmbeddedDocument):
+            InterestRate = SimpleField(validator=float,
+                                       name='Interest Rate',
+                                       required=True)
+        data = {"Interest Rate": "1.01"}
+        my_model = MyModel2(**data)
+        self.assertEqual(my_model['Interest Rate'], 1.01)
+        self.assertRaises(ValidationRequiredError, MyModel2)
 
 
 class ValidationTest(TestCase):

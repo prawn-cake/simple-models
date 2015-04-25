@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-from simplemodels.exceptions import RequiredValidationError
+from simplemodels.exceptions import ValidationRequiredError
 from simplemodels.fields import SimpleField
 import six
+
+__all__ = ['DictEmbeddedDocument']
 
 
 class AttributeDict(dict):
@@ -21,7 +23,6 @@ class AttributeDict(dict):
 
 
 class SimpleEmbeddedMeta(type):
-
     """ Metaclass for collecting fields info """
 
     def __new__(mcs, name, parents, dct):
@@ -38,16 +39,15 @@ class SimpleEmbeddedMeta(type):
         _required_fields = []
 
         # Inspect subclass to save SimpleFields and require field names
-        for item_name, obj in dct.items():
+        for field_name, obj in dct.items():
             if isinstance(obj, SimpleField):
-                _fields[item_name] = obj
-                if obj.required:
-                    _required_fields.append(item_name)
-
                 # set SimpleField text name as a private `_name` attribute
-                if isinstance(obj, SimpleField):
-                    obj._name = item_name
-                    obj._holder_name = name  # class holder name
+                obj._name = field_name
+                obj._holder_name = name  # class holder name
+
+                _fields[obj.get_name()] = obj
+                if obj.required:
+                    _required_fields.append(obj.get_name())
 
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)
@@ -62,40 +62,40 @@ class DictEmbeddedDocument(AttributeDict):
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
-        super(DictEmbeddedDocument, self).__init__(**kwargs)
         prepared_fields = self._prepare_fields(**kwargs)
+        super(DictEmbeddedDocument, self).__init__(**prepared_fields)
 
-        # Initialize prepared fields
+        # Initialize prepared field values to self.__dict__
         for name, value in prepared_fields.items():
-            setattr(self, name, value)
+            self.__dict__[name] = value
 
     def _prepare_fields(self, **kwargs):
         """Do field validations and set defaults
 
-        :param kwargs:
+        :param kwargs: init parameters
         :return: :raise RequiredValidationError:
         """
-        cls = type(self)
+        cls = self.__class__
         required_fields_errors = []
 
         # Do some validations
         for field_name, obj in self._fields.items():
-            field_value = self.get(field_name)
+            # Check by optional field name firstly
+            field_val = kwargs.get(field_name)
 
-            # Set default value if
-            if (field_value is None or field_value == '') and obj.has_default():
-                field_value = getattr(obj, 'default')
+            # Set default value if it has it
+            if (field_val is None or field_val == '') and obj.has_default():
+                field_val = getattr(obj, 'default')
 
             # Validate requires
             cls._validate_require(
-                field_name, field_value, required_fields_errors)
+                field_name, field_val, required_fields_errors)
 
             # Build model structure
-            if field_name not in kwargs:
-                kwargs[field_name] = field_value
+            kwargs[field_name] = obj.validate(field_val)
 
         if required_fields_errors:
-            raise RequiredValidationError(str(required_fields_errors))
+            raise ValidationRequiredError(str(required_fields_errors))
 
         return kwargs
 
@@ -109,10 +109,8 @@ class DictEmbeddedDocument(AttributeDict):
 
     @classmethod
     def _clean_kwargs(cls, kwargs):
-        return {
-            k: v for k, v in kwargs.items()
-            if k in getattr(cls, '_fields', [])
-        }
+        fields = getattr(cls, '_fields', {})
+        return {k: v for k, v in kwargs.items() if k in fields}
 
     @classmethod
     def get_instance(cls, **kwargs):
