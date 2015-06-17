@@ -45,9 +45,9 @@ class SimpleEmbeddedMeta(type):
                 obj._name = field_name
                 obj._holder_name = name  # class holder name
 
-                _fields[obj.get_name()] = obj
+                _fields[obj.name] = obj
                 if obj.required:
-                    _required_fields.append(obj.get_name())
+                    _required_fields.append(obj.name)
 
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)

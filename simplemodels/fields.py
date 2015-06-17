@@ -38,10 +38,11 @@ class SimpleField(object):
         # TODO: validate default value
         self.default = default() if callable(default) else default
         self.error_text = error_text
-
-    def get_name(self):
+    
+    @property
+    def name(self):
         return self._optional_name or self._name
-
+    
     def validate(self, value):
         """Helper method to validate field.
 
@@ -78,17 +79,17 @@ class SimpleField(object):
         return self.default is not None
 
     def __get__(self, instance, owner):
-        return instance.__dict__.get(self.get_name(), self.default)
+        return instance.__dict__.get(self.name, self.default)
 
     def __set__(self, instance, value):
         value = self.validate(value)
-        instance.__dict__[self.get_name()] = value
+        instance.__dict__[self.name] = value
 
     def __repr__(self):
-        return six.u("{}.{}".format(self._holder_name, self.get_name()))
+        return six.u("{}.{}".format(self._holder_name, self.name))
 
     def __unicode__(self):
-        return six.u("{}.{}".format(self._holder_name, self.get_name()))
+        return six.u("{}.{}".format(self._holder_name, self.name))
 
 
 class IntegerField(SimpleField):
