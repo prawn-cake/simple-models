@@ -145,7 +145,7 @@ class DictEmbeddedDocumentTest(TestCase):
             def c(self):
                 return str(self.a) + str(self.b)
 
-        document = DocumentWithProperty.get_instance(a=1, b=2)
+        document = DocumentWithProperty(a=1, b=2)
 
         self.assertEqual(document.c, '12')
 
@@ -160,10 +160,10 @@ class DictEmbeddedDocumentTest(TestCase):
             b = SimpleField()
 
         source_data = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
-        obj = TestModel.get_instance(**source_data)
+        obj = TestModel(**source_data)
         self.assertEqual(len(obj), len(TestModel._fields))
         for field_name in obj.keys():
-            field_name in TestModel._fields
+            self.assertIn(field_name, TestModel._fields)
 
     def test_field_type(self):
         class PostAddress(DictEmbeddedDocument):
@@ -197,15 +197,6 @@ class DictEmbeddedDocumentTest(TestCase):
             id='1', name='Maks', address=[('street', 999), ]
         )
 
-    def test_new_constructor(self):
-        class PostAddress(DictEmbeddedDocument):
-            street = SimpleField(validator=str)
-
-        address_1 = PostAddress(street='Pobeda street', apartments='32')
-        address_2 = PostAddress.get_instance(
-            street='Pobeda street', apartments='32')
-        self.assertEqual(address_1, address_2)
-
     def test_model_with_validator(self):
         class Timestamp(DictEmbeddedDocument):
             hour = SimpleField(validator=int)
@@ -237,7 +228,7 @@ class DictEmbeddedDocumentTest(TestCase):
             InterestRate = SimpleField(validator=float, name='Interest Rate')
 
         data = {"Interest Rate": "1.01"}
-        my_model = RateModel.get_instance(**data)
+        my_model = RateModel(**data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
 

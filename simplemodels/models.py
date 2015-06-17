@@ -113,16 +113,6 @@ class DictEmbeddedDocument(AttributeDict):
         return {k: v for k, v in kwargs.items() if k in fields}
 
     @classmethod
-    def get_instance(cls, **kwargs):
-        """Get class instance with fields according to model declaration
-
-        :param kwargs: key-value field parameters
-        :return: class instance
-        """
-        # FIXME: remove this method
-        return cls(**cls._clean_kwargs(kwargs))
-
-    @classmethod
     def from_dict(cls, kwargs):
         """Create model instance from dict or from another model for nested
         fields
