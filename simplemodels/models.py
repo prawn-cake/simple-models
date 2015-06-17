@@ -79,20 +79,20 @@ class DictEmbeddedDocument(AttributeDict):
         required_fields_errors = []
 
         # Do some validations
-        for field_name, obj in self._fields.items():
-            # Check by optional field name firstly
-            field_val = kwargs.get(field_name)
+        for field_name, field_obj in self._fields.items():
 
-            # Set default value if it has it
-            if (field_val is None or field_val == '') and obj.has_default():
-                field_val = getattr(obj, 'default')
+            # Get field value or set default
+            field_val = kwargs.get(field_name, getattr(field_obj, 'default'))
 
-            # Validate requires
+            # Validate required fields
             cls._validate_require(
                 field_name, field_val, required_fields_errors)
 
             # Build model structure
-            kwargs[field_name] = obj.validate(field_val)
+            if field_name in kwargs:
+                kwargs[field_name] = field_obj.validate(field_val)
+            else:
+                kwargs[field_name] = field_val
 
         if required_fields_errors:
             raise ValidationRequiredError(str(required_fields_errors))
@@ -131,3 +131,6 @@ class DictEmbeddedDocument(AttributeDict):
         :return:
         """
         return cls(**cls._clean_kwargs(kwargs))
+
+
+# TODO: implement searchable and filterable collection for embedded documents, think about it

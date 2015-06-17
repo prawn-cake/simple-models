@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+from decimal import Decimal
 from unittest import TestCase
 from datetime import datetime
+from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ValidationRequiredError
-from simplemodels.fields import SimpleField
+from simplemodels.fields import SimpleField, IntegerField, BooleanField, \
+    CharField, DecimalField, FloatField, DocumentField
 from simplemodels.models import AttributeDict, DictEmbeddedDocument
 from simplemodels.utils import Choices
-from simplemodels.validators import get_validator
 import six
 
 
@@ -45,7 +47,7 @@ class Address(DictEmbeddedDocument):
 
 class Person(DictEmbeddedDocument):
     name = SimpleField(required=True)
-    address = SimpleField(type=Address)
+    address = SimpleField(validator=Address)
 
 
 #### End of test model classes ###
@@ -80,7 +82,7 @@ class DictEmbeddedDocumentTest(TestCase):
         class BidEmbedded(DictEmbeddedDocument):
             xsi_type = SimpleField('BidEmbedded')
             # xsi_type = fields.StringField(default='BidEmbedded')
-            contentBid = SimpleField(Money())
+            contentBid = SimpleField(default=Money())
 
         bid = BidEmbedded()
 
@@ -165,28 +167,24 @@ class DictEmbeddedDocumentTest(TestCase):
 
     def test_field_type(self):
         class PostAddress(DictEmbeddedDocument):
-            street = SimpleField(type=str)
+            street = SimpleField(validator=str)
 
-        class ModelA(DictEmbeddedDocument):
-            id = SimpleField(type=int)
+        class User(DictEmbeddedDocument):
+            id = SimpleField(validator=int)
             name = SimpleField(required=True, default='TestName')
-            address = SimpleField(type=PostAddress)
+            address = SimpleField(validator=PostAddress)
 
-        a = ModelA.get_instance(
-            id='1',
-            name='Maks',
-            address=PostAddress.get_instance(street=999)
-        )
-        self.assertIsInstance(a, ModelA)
+        a = User(id='1', name='Maks', address=PostAddress(street=999))
+        self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
 
-        a = ModelA.get_instance(
+        a = User(
             id='1', name='Maks',
             address={'street': 999, 'city': 'Saint-Petersburg'}
         )
-        self.assertIsInstance(a, ModelA)
+        self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
@@ -195,13 +193,13 @@ class DictEmbeddedDocumentTest(TestCase):
 
         # Expect a ValidationError: wrong 'address' format is passed
         self.assertRaises(
-            ValidationError, ModelA,
+            ValidationError, User,
             id='1', name='Maks', address=[('street', 999), ]
         )
 
     def test_new_constructor(self):
         class PostAddress(DictEmbeddedDocument):
-            street = SimpleField(type=str)
+            street = SimpleField(validator=str)
 
         address_1 = PostAddress(street='Pobeda street', apartments='32')
         address_2 = PostAddress.get_instance(
@@ -218,8 +216,8 @@ class DictEmbeddedDocumentTest(TestCase):
                 validator=lambda value: datetime.strptime(
                     value, '%Y-%m-%dT%H:%M:%SZ'))
             count = SimpleField(validator=int)
-            timestamp = SimpleField(validator=Timestamp.from_dict)
-            ts = SimpleField(validator=Timestamp.from_dict)
+            timestamp = SimpleField(validator=Timestamp)
+            ts = SimpleField(validator=Timestamp)
 
         moment = Moment(
             start_date='2009-04-01T23:51:23Z',
@@ -235,28 +233,28 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertRaises(ValidationError, Moment, count='a')
 
     def test_model_optional_name(self):
-        class MyModel(DictEmbeddedDocument):
+        class RateModel(DictEmbeddedDocument):
             InterestRate = SimpleField(validator=float, name='Interest Rate')
 
         data = {"Interest Rate": "1.01"}
-        my_model = MyModel.get_instance(**data)
+        my_model = RateModel.get_instance(**data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
 
-        my_model = MyModel(**data)
+        my_model = RateModel(**data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
         self.assertEqual(my_model['Interest Rate'], 1.01)
 
     def test_model_optional_name_required(self):
-        class MyModel2(DictEmbeddedDocument):
+        class RateModel(DictEmbeddedDocument):
             InterestRate = SimpleField(validator=float,
                                        name='Interest Rate',
                                        required=True)
         data = {"Interest Rate": "1.01"}
-        my_model = MyModel2(**data)
+        my_model = RateModel(**data)
         self.assertEqual(my_model['Interest Rate'], 1.01)
-        self.assertRaises(ValidationRequiredError, MyModel2)
+        self.assertRaises(ValidationRequiredError, RateModel)
 
 
 class ValidationTest(TestCase):
@@ -265,99 +263,68 @@ class ValidationTest(TestCase):
         self.assertRaises(ValidationError, Person, address=street)
 
 
-# FIXME: deprecated
-class ValidatorsTest(TestCase):
-    def test_null_validator(self):
-        value = 10
-        value = get_validator(None).validate(value)
-        # expect validator nothing to do and return value as-is
-        self.assertEqual(value, 10)
+class TypedFieldsTest(TestCase):
+    def setUp(self):
+        class SubDocument(DictEmbeddedDocument):
+            int_field = IntegerField()
 
-    def test_str_validator(self):
-        value = 10
-        value = get_validator(str).validate(value)
-        # expect converted to str value
-        self.assertEqual(value, '10')
+        self.subdocument = SubDocument
 
-    def test_int_validator(self):
-        value = 10
-        value = get_validator(int).validate(value)
-        self.assertEqual(value, 10)
-        # Expect an error
-        value = 'aa'
-        self.assertRaises(ValidationError, get_validator(int).validate, value)
+        class Model(DictEmbeddedDocument):
+            int_field = IntegerField()
+            float_field = FloatField()
+            decimal_field = DecimalField()
+            bool_field = BooleanField()
+            char_field = CharField()
+            uchar_field = CharField(is_unicode=True)
+            doc_field = DocumentField(model=SubDocument)
 
-    def test_dict_embedded_document_validator(self):
-        class DocumentA(DictEmbeddedDocument):
-            title = SimpleField()
-            number = SimpleField()
+        self.model = Model
 
-        class DocumentB(DictEmbeddedDocument):
-            title = SimpleField()
-            number = SimpleField()
+    def test_int(self):
+        instance = self.model(int_field='1')
+        self.assertIsInstance(instance.int_field, int)
+        self.assertEqual(instance.int_field, 1)
+        self.assertRaises(ValidationError, self.model, int_field='a')
 
-        value = DocumentA.get_instance(title='document1', number=1)
-        value = get_validator(DictEmbeddedDocument).using(
-            DocumentA).validate(value)
-        self.assertIsInstance(value, DocumentA)
-        self.assertEqual(value.title, 'document1')
-        self.assertEqual(value.number, 1)
+    def test_float(self):
+        instance = self.model(float_field='1')
+        self.assertIsInstance(instance.float_field, float)
+        self.assertEqual(instance.float_field, 1.0)
+        self.assertRaises(ValidationError, self.model, float_field='a')
 
-        value = dict(title='document1', number=1)
-        value = get_validator(DictEmbeddedDocument).using(
-            DocumentB).validate(value)
-        self.assertIsInstance(value, DocumentB)
-        self.assertEqual(value.title, 'document1')
-        self.assertEqual(value.number, 1)
+    def test_decimal(self):
+        instance = self.model(decimal_field=1.0)
+        self.assertIsInstance(instance.decimal_field, Decimal)
+        self.assertEqual(instance.decimal_field, Decimal('1.0'))
+        self.assertRaises(ValidationError, self.model, decimal_field='a')
 
-        self.assertRaises(
-            ValidationError, get_validator(DictEmbeddedDocument).validate,
-            ['invalid parameter']
-        )
+    def test_bool(self):
+        for val in (1, True, 'abc'):
+            instance = self.model(bool_field=val)
+            self.assertIsInstance(instance.bool_field, bool)
+            self.assertEqual(instance.bool_field, True)
 
-    def test_datetime_validator(self):
-        # FIXME: DEPRECATED
-        json_value = '2009-04-01T23:51:23Z'
-        iso8601_value = '2009-04-01T23:51:23'
-        iso_date_value = '2009-04-01'
-        iso_time_value = '23:51:23'
-        custom_c_value = 'Tue Aug 16 21:30:00 1988'
+        for val in ('', 0, None, False):
+            instance = self.model(bool_field=val)
+            self.assertIsInstance(instance.bool_field, bool)
+            self.assertEqual(instance.bool_field, False)
 
-        validator = get_validator('datetime')
+    def test_char(self):
+        if PYTHON_VERSION == 2:
+            instance = self.model(char_field='abc')
+            self.assertIsInstance(instance.char_field, str)
+            self.assertEqual(instance.char_field, 'abc')
 
-        # test default format
-        self.assertIsInstance(validator.validate(json_value), datetime)
+            instance = self.model(uchar_field='abc')
+            self.assertIsInstance(instance.uchar_field, unicode)
+            self.assertEqual(instance.uchar_field, u'abc')
 
-        # test templates
-        self.assertIsInstance(
-            validator.validate(json_value, dt_template='json'),
-            datetime)
+            instance = self.model(uchar_field=1.0)
+            self.assertIsInstance(instance.uchar_field, unicode)
+            self.assertEqual(instance.uchar_field, u'1.0')
 
-        self.assertIsInstance(
-            validator.validate(iso8601_value, dt_template='iso8601'),
-            datetime)
-
-        self.assertIsInstance(
-            validator.validate(iso_date_value, dt_template='iso_date'),
-            datetime)
-
-        self.assertIsInstance(
-            validator.validate(iso_time_value, dt_template='iso_time'),
-            datetime)
-
-        # test custom format
-        self.assertIsInstance(
-            validator.validate(custom_c_value, format='%c'),
-            datetime)
-
-    def test_validator_option(self):
-        class User(DictEmbeddedDocument):
-            id = SimpleField(validator=int)
-            name = SimpleField(validator=six.u)  # unicode
-            is_logged = SimpleField(
-                validator=bool, default=False, required=True)
-
-        user = User(id='1', name='Mark')
-        self.assertEqual(user.id, 1)
-        self.assertIsInstance(user.name, unicode)
-        self.assertEqual(user.is_logged, False)
+    def test_doc(self):
+        instance = self.model(doc_field={'int_field': '1'})
+        self.assertIsInstance(instance.doc_field, self.subdocument)
+        self.assertEqual(instance.doc_field, {'int_field': 1})
