@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-from simplemodels.exceptions import ValidationRequiredError
-from simplemodels.fields import SimpleField
+from simplemodels.exceptions import ValidationRequiredError, \
+    SetImmutableFieldError
+from simplemodels.fields import SimpleField, DocumentField
 import six
 
-__all__ = ['DictEmbeddedDocument']
+__all__ = ['Document', 'ImmutableDocument']
 
 
 class AttributeDict(dict):
@@ -40,7 +41,7 @@ class SimpleEmbeddedMeta(type):
 
         # Inspect subclass to save SimpleFields and require field names
         for field_name, obj in dct.items():
-            if isinstance(obj, SimpleField):
+            if issubclass(type(obj), SimpleField):
                 # set SimpleField text name as a private `_name` attribute
                 obj._name = field_name
                 obj._holder_name = name  # class holder name
@@ -56,14 +57,14 @@ class SimpleEmbeddedMeta(type):
 
 
 @six.add_metaclass(SimpleEmbeddedMeta)
-class DictEmbeddedDocument(AttributeDict):
+class Document(AttributeDict):
 
     """ Main class to represent structured dict-like document """
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
         prepared_fields = self._prepare_fields(**kwargs)
-        super(DictEmbeddedDocument, self).__init__(**prepared_fields)
+        super(Document, self).__init__(**prepared_fields)
 
         # Initialize prepared field values to self.__dict__
         for name, value in prepared_fields.items():
@@ -91,6 +92,9 @@ class DictEmbeddedDocument(AttributeDict):
             # Build model structure
             if field_name in kwargs:
                 kwargs[field_name] = field_obj.validate(field_val)
+            elif issubclass(type(field_obj), DocumentField):
+                # build empty nested document
+                kwargs[field_name] = field_obj.validate({})
             else:
                 kwargs[field_name] = field_val
 
@@ -123,4 +127,19 @@ class DictEmbeddedDocument(AttributeDict):
         return cls(**cls._clean_kwargs(kwargs))
 
 
+class ImmutableDocument(Document):
+    """Read only document. Useful"""
+
+    def __setattr__(self, key, value):
+        raise SetImmutableFieldError(
+            'Set operation is not allowed for {}'.format(
+                self.__class__.__name__))
+
+    def __setitem__(self, key, value):
+        return setattr(self, key, value)
+
+
 # TODO: implement searchable and filterable collection for embedded documents, think about it
+
+
+DictEmbeddedDocument = Document

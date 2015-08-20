@@ -3,7 +3,7 @@
 
 from simplemodels import PYTHON_VERSION
 
-from simplemodels.exceptions import ValidationError
+from simplemodels.exceptions import ValidationError, ValidationDefaultError
 import six
 from decimal import Decimal, InvalidOperation
 
@@ -35,21 +35,25 @@ class SimpleField(object):
         # TODO: support choices validation
         self.choices = choices
         self.validator = validator
-        # TODO: validate default value
         self.default = default() if callable(default) else default
         self.error_text = error_text
+
+        # validate default value
+        if self.default:
+            self.default = self.validate(
+                self.default, err=ValidationDefaultError)
     
     @property
     def name(self):
         return self._optional_name or self._name
     
-    def validate(self, value):
+    def validate(self, value, err=ValidationError):
         """Helper method to validate field.
 
         :param value:
         :return:
         """
-        from simplemodels.models import DictEmbeddedDocument
+        from simplemodels.models import Document
 
         if self.validator is None:
             return value
@@ -58,8 +62,7 @@ class SimpleField(object):
             is_document = False
             try:
                 # Handle an error with issubclass(lambda function)
-                is_document = issubclass(
-                    self.validator, DictEmbeddedDocument)
+                is_document = issubclass(self.validator, Document)
             except TypeError:
                 pass
 
@@ -70,7 +73,7 @@ class SimpleField(object):
 
         # InvalidOperation for decimal, TypeError
         except (ValueError, InvalidOperation, TypeError):
-            raise ValidationError("Wrong value '{}' for the field `{}`. {}"
+            raise err("Wrong value '{!r}' for the field `{!r}`. {}"
                                   "".format(value, self, self.error_text))
         else:
             return validated_val

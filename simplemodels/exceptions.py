@@ -24,3 +24,14 @@ class ValidationRequiredError(ValidationError):
 
 class ValidationTypeIsNotSupported(ValidationError):
     pass
+
+
+class ValidationDefaultError(ValidationError):
+    """Raised when default value is wrong"""
+
+    pass
+
+
+class SetImmutableFieldError(ValidationError):
+    """Raised when try to set immutable field in a document"""
+    pass

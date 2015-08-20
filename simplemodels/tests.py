@@ -3,10 +3,12 @@ from decimal import Decimal
 from unittest import TestCase
 from datetime import datetime
 from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import ValidationError, ValidationRequiredError
+from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
+    ValidationDefaultError, SetImmutableFieldError
 from simplemodels.fields import SimpleField, IntegerField, BooleanField, \
     CharField, DecimalField, FloatField, DocumentField
-from simplemodels.models import AttributeDict, DictEmbeddedDocument
+from simplemodels.models import AttributeDict, DictEmbeddedDocument, Document, \
+    ImmutableDocument
 from simplemodels.utils import Choices
 import six
 
@@ -29,7 +31,7 @@ class MailboxItem(DictEmbeddedDocument):
 
     def __init__(self, **kwargs):
         super(MailboxItem, self).__init__(**kwargs)
-        if not 'received_at' in kwargs and not self.received_at:
+        if 'received_at' not in kwargs and not self.received_at:
             self.received_at = datetime.now()
 
     def __repr__(self):
@@ -253,6 +255,24 @@ class ValidationTest(TestCase):
         street = 'Pagoda street'
         self.assertRaises(ValidationError, Person, address=street)
 
+    def test_validation_with_default_values(self):
+        # Expect an error on class initialization step
+        with self.assertRaises(ValidationDefaultError):
+            class A(Document):
+                id = IntegerField(default='a')
+
+        # Accepted case
+        class B(Document):
+            id = IntegerField(default='1')
+
+        b = B()
+        self.assertEqual(b.id, 1)
+
+        # Unicode case
+        with self.assertRaises(ValidationDefaultError):
+            class C(Document):
+                name = CharField(default=u'\x80')
+
 
 class TypedFieldsTest(TestCase):
     def setUp(self):
@@ -319,3 +339,47 @@ class TypedFieldsTest(TestCase):
         instance = self.model(doc_field={'int_field': '1'})
         self.assertIsInstance(instance.doc_field, self.subdocument)
         self.assertEqual(instance.doc_field, {'int_field': 1})
+
+    def test_empty_nested(self):
+        instance = self.model()
+        self.assertIsNone(instance.doc_field.int_field)
+
+
+class ImmutableDocumentTest(TestCase):
+    def test_immutable(self):
+        class User(ImmutableDocument):
+            id = IntegerField(default=1)
+            name = CharField(default='John')
+
+        user = User()
+        self.assertEqual(user.id, 1)
+        with self.assertRaises(SetImmutableFieldError):
+            user.name = 'Jorge'
+
+        with self.assertRaises(SetImmutableFieldError):
+            setattr(user, 'name', 'Jorge')
+
+        with self.assertRaises(SetImmutableFieldError):
+            user['name'] = 'Jorge'
+
+    def test_immutable_nested(self):
+        class MetaInfo(ImmutableDocument):
+            id = CharField(default='unknown')
+            login = CharField(default='guest')
+
+        class User(Document):
+            name = CharField()
+            meta = DocumentField(model=MetaInfo)
+
+        user = User()
+
+        # Check init params
+        self.assertEqual(user.meta.login, 'guest')
+
+        # Try to set immutable nested doc field, expect error
+        with self.assertRaises(SetImmutableFieldError):
+            user.meta.login = 'admin'
+
+        # Try to set mutable top-level name field
+        user.name = 'Jorge'
+        self.assertEqual(user.name, 'Jorge')
