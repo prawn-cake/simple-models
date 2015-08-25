@@ -1,26 +1,22 @@
 # -*- coding: utf-8 -*-
-from decimal import Decimal
 from unittest import TestCase
 from datetime import datetime
-from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
-    ValidationDefaultError, SetImmutableFieldError
-from simplemodels.fields import SimpleField, IntegerField, BooleanField, \
-    CharField, DecimalField, FloatField, DocumentField
-from simplemodels.models import AttributeDict, DictEmbeddedDocument, Document, \
-    ImmutableDocument
-from simplemodels.utils import Choices
+
 import six
+
+from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
+    ValidationDefaultError, ImmutableDocumentError
+from simplemodels.fields import SimpleField, IntegerField, CharField, \
+    DocumentField
+from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
+    Choices
 
 
 ### Test model classes ###
 
 
-class MailboxItem(DictEmbeddedDocument):
-    TYPES = Choices(
-        ("SG", "SUGGESTION", "Suggestion"),
-        ("ML", "MAIL", "Mail")
-    )
+class MailboxItem(Document):
+    TYPES = Choices(["SUGGESTION", "MAIL"])
 
     subject = SimpleField(default='')
     body = SimpleField(default='')
@@ -43,13 +39,13 @@ class MailboxItem(DictEmbeddedDocument):
             self.__class__.__name__, self.type, self.subject))
 
 
-class Address(DictEmbeddedDocument):
+class Address(Document):
     street = SimpleField()
 
 
-class Person(DictEmbeddedDocument):
+class Person(Document):
     name = SimpleField(required=True)
-    address = SimpleField(validator=Address)
+    address = SimpleField(validatos=[Address])
 
 
 #### End of test model classes ###
@@ -72,16 +68,16 @@ class AttributeDictTest(TestCase):
         self.assertTrue(ad_copy)
 
 
-class DictEmbeddedDocumentTest(TestCase):
+class DocumentTest(TestCase):
     def test_document(self):
-        class Money(DictEmbeddedDocument):
+        class Money(Document):
 
             """Nested"""
 
             xsi_type = SimpleField('Money')
             microAmount = SimpleField()
 
-        class BidEmbedded(DictEmbeddedDocument):
+        class BidEmbedded(Document):
             xsi_type = SimpleField('BidEmbedded')
             # xsi_type = fields.StringField(default='BidEmbedded')
             contentBid = SimpleField(default=Money())
@@ -104,7 +100,7 @@ class DictEmbeddedDocumentTest(TestCase):
         )
 
     def test_simple_field_default(self):
-        class A(DictEmbeddedDocument):
+        class A(Document):
             f = SimpleField(default=10)
             l = SimpleField(default=list)
 
@@ -113,7 +109,7 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertEqual(a.l, [])
 
     def test_simple_field_required(self):
-        class TestDictDocument(DictEmbeddedDocument):
+        class TestDictDocument(Document):
             xsi_type = SimpleField(required=True)
 
         self.assertRaises(ValidationRequiredError, TestDictDocument)
@@ -139,7 +135,7 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertEqual(Address.__name__, 'Address')
 
     def test_property_getter(self):
-        class DocumentWithProperty(DictEmbeddedDocument):
+        class DocumentWithProperty(Document):
             a = SimpleField()
             b = SimpleField()
 
@@ -157,7 +153,7 @@ class DictEmbeddedDocumentTest(TestCase):
 
 
         """
-        class TestModel(DictEmbeddedDocument):
+        class TestModel(Document):
             a = SimpleField()
             b = SimpleField()
 
@@ -168,13 +164,13 @@ class DictEmbeddedDocumentTest(TestCase):
             self.assertIn(field_name, TestModel._fields)
 
     def test_field_type(self):
-        class PostAddress(DictEmbeddedDocument):
-            street = SimpleField(validator=str)
+        class PostAddress(Document):
+            street = SimpleField(validators=[str])
 
-        class User(DictEmbeddedDocument):
-            id = SimpleField(validator=int)
+        class User(Document):
+            id = SimpleField(validators=[int])
             name = SimpleField(required=True, default='TestName')
-            address = SimpleField(validator=PostAddress)
+            address = DocumentField(model=PostAddress)
 
         a = User(id='1', name='Maks', address=PostAddress(street=999))
         self.assertIsInstance(a, User)
@@ -200,17 +196,17 @@ class DictEmbeddedDocumentTest(TestCase):
         )
 
     def test_model_with_validator(self):
-        class Timestamp(DictEmbeddedDocument):
-            hour = SimpleField(validator=int)
-            minute = SimpleField(validator=int)
+        class Timestamp(Document):
+            hour = SimpleField(validators=[int])
+            minute = SimpleField(validators=[int])
 
-        class Moment(DictEmbeddedDocument):
+        class Moment(Document):
             start_date = SimpleField(
-                validator=lambda value: datetime.strptime(
-                    value, '%Y-%m-%dT%H:%M:%SZ'))
-            count = SimpleField(validator=int)
-            timestamp = SimpleField(validator=Timestamp)
-            ts = SimpleField(validator=Timestamp)
+                validators=[lambda value: datetime.strptime(
+                    value, '%Y-%m-%dT%H:%M:%SZ')])
+            count = SimpleField(validators=[int])
+            timestamp = DocumentField(model=Timestamp)
+            ts = DocumentField(model=Timestamp)
 
         moment = Moment(
             start_date='2009-04-01T23:51:23Z',
@@ -225,8 +221,8 @@ class DictEmbeddedDocumentTest(TestCase):
 
         self.assertRaises(ValidationError, Moment, count='a')
 
-    def test_model_optional_name(self):
-        class RateModel(DictEmbeddedDocument):
+    def test_model_verbose_name(self):
+        class RateModel(Document):
             InterestRate = SimpleField(validator=float, name='Interest Rate')
 
         data = {"Interest Rate": "1.01"}
@@ -239,8 +235,8 @@ class DictEmbeddedDocumentTest(TestCase):
         self.assertEqual(my_model.InterestRate, 1.01)
         self.assertEqual(my_model['Interest Rate'], 1.01)
 
-    def test_model_optional_name_required(self):
-        class RateModel(DictEmbeddedDocument):
+    def test_model_verbose_name_required(self):
+        class RateModel(Document):
             InterestRate = SimpleField(validator=float,
                                        name='Interest Rate',
                                        required=True)
@@ -274,95 +270,24 @@ class ValidationTest(TestCase):
                 name = CharField(default=u'\x80')
 
 
-class TypedFieldsTest(TestCase):
-    def setUp(self):
-        class SubDocument(DictEmbeddedDocument):
-            int_field = IntegerField()
-
-        self.subdocument = SubDocument
-
-        class Model(DictEmbeddedDocument):
-            int_field = IntegerField()
-            float_field = FloatField()
-            decimal_field = DecimalField()
-            bool_field = BooleanField()
-            char_field = CharField()
-            uchar_field = CharField(is_unicode=True)
-            doc_field = DocumentField(model=SubDocument)
-
-        self.model = Model
-
-    def test_int(self):
-        instance = self.model(int_field='1')
-        self.assertIsInstance(instance.int_field, int)
-        self.assertEqual(instance.int_field, 1)
-        self.assertRaises(ValidationError, self.model, int_field='a')
-
-    def test_float(self):
-        instance = self.model(float_field='1')
-        self.assertIsInstance(instance.float_field, float)
-        self.assertEqual(instance.float_field, 1.0)
-        self.assertRaises(ValidationError, self.model, float_field='a')
-
-    def test_decimal(self):
-        instance = self.model(decimal_field=1.0)
-        self.assertIsInstance(instance.decimal_field, Decimal)
-        self.assertEqual(instance.decimal_field, Decimal('1.0'))
-        self.assertRaises(ValidationError, self.model, decimal_field='a')
-
-    def test_bool(self):
-        for val in (1, True, 'abc'):
-            instance = self.model(bool_field=val)
-            self.assertIsInstance(instance.bool_field, bool)
-            self.assertEqual(instance.bool_field, True)
-
-        for val in ('', 0, None, False):
-            instance = self.model(bool_field=val)
-            self.assertIsInstance(instance.bool_field, bool)
-            self.assertEqual(instance.bool_field, False)
-
-    def test_char(self):
-        if PYTHON_VERSION == 2:
-            instance = self.model(char_field='abc')
-            self.assertIsInstance(instance.char_field, str)
-            self.assertEqual(instance.char_field, 'abc')
-
-            instance = self.model(uchar_field='abc')
-            self.assertIsInstance(instance.uchar_field, unicode)
-            self.assertEqual(instance.uchar_field, u'abc')
-
-            instance = self.model(uchar_field=1.0)
-            self.assertIsInstance(instance.uchar_field, unicode)
-            self.assertEqual(instance.uchar_field, u'1.0')
-
-    def test_doc(self):
-        instance = self.model(doc_field={'int_field': '1'})
-        self.assertIsInstance(instance.doc_field, self.subdocument)
-        self.assertEqual(instance.doc_field, {'int_field': 1})
-
-    def test_empty_nested(self):
-        instance = self.model()
-        self.assertIsNone(instance.doc_field.int_field)
-
-
 class ImmutableDocumentTest(TestCase):
-    def test_immutable(self):
+    def test_immutable_document(self):
         class User(ImmutableDocument):
             id = IntegerField(default=1)
             name = CharField(default='John')
 
         user = User()
         self.assertEqual(user.id, 1)
-        with self.assertRaises(SetImmutableFieldError):
+        with self.assertRaises(ImmutableDocumentError):
             user.name = 'Jorge'
 
-        with self.assertRaises(SetImmutableFieldError):
+        with self.assertRaises(ImmutableDocumentError):
             setattr(user, 'name', 'Jorge')
 
-        with self.assertRaises(SetImmutableFieldError):
+        with self.assertRaises(ImmutableDocumentError):
             user['name'] = 'Jorge'
 
-    def test_immutable_nested(self):
+    def test_immutable_nested_document(self):
         class MetaInfo(ImmutableDocument):
             id = CharField(default='unknown')
             login = CharField(default='guest')
@@ -377,9 +302,36 @@ class ImmutableDocumentTest(TestCase):
         self.assertEqual(user.meta.login, 'guest')
 
         # Try to set immutable nested doc field, expect error
-        with self.assertRaises(SetImmutableFieldError):
+        with self.assertRaises(ImmutableDocumentError):
             user.meta.login = 'admin'
 
         # Try to set mutable top-level name field
         user.name = 'Jorge'
         self.assertEqual(user.name, 'Jorge')
+
+
+class ChoicesTest(TestCase):
+    def test_creation(self):
+        choices = Choices(['MAIL', 'SUGGESTION'])
+        self.assertIsInstance(choices, Choices)
+
+    def test_contains(self):
+        choices = Choices(['MAIL', 'SUGGESTION'])
+        self.assertIn('MAIL', choices)
+        self.assertNotIn('EMAIL', choices)
+
+    def test_equality(self):
+        choices = Choices(['MAIL', '1'])
+        self.assertEqual(choices.MAIL, 'MAIL')
+        self.assertEqual(choices['1'], '1')
+
+    def test_errors(self):
+        with self.assertRaises(ValueError) as err:
+            choices = Choices(['MAIL', '1', None])
+            self.assertIsNone(choices)
+            self.assertIn('Must be basestring instance', err)
+
+        with self.assertRaises(ValueError) as err:
+            choices = Choices({'MAIL', '1', None})
+            self.assertIsNone(choices)
+            self.assertIn('Wrong choices_list argument type', err)

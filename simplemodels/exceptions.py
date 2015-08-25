@@ -32,6 +32,11 @@ class ValidationDefaultError(ValidationError):
     pass
 
 
-class SetImmutableFieldError(ValidationError):
-    """Raised when try to set immutable field in a document"""
+class ImmutableDocumentError(ValidationError):
+    """Raised when try to set any field in the immutable document"""
+    pass
+
+
+class ImmutableFieldError(ValidationError):
+    """Raised when try to set certain immutable field in a document"""
     pass

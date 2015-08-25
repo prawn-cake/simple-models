@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
 
-from simplemodels import PYTHON_VERSION
-
-from simplemodels.exceptions import ValidationError, ValidationDefaultError
-import six
 from decimal import Decimal, InvalidOperation
+import warnings
+
+import six
+
+from simplemodels import PYTHON_VERSION
+from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
+    ImmutableFieldError
+
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
            'CharField', 'BooleanField']
@@ -15,76 +19,112 @@ class SimpleField(object):
 
     """Class-field with descriptor for DictEmbeddedDocument"""
 
-    def __init__(self, default=None, required=False, choices=None,
-                 validator=None, error_text='', name=None, **kwargs):
+    def __init__(self, default=None, required=False, choices=None, name=None,
+                 validator=None, validators=None, error_text='',
+                 immutable=False, **kwargs):
         """
         :param name: optional name
         :param default: default value
         :param required: is field required
         :param choices: choices list. See utils.Choices
-        :param validator: callable object to validate a value
-        :param error_text: return with validation error, which helps to debug
+        :param validator: callable object to validate a value. DEPRECATED
+        :param validators: list of callable objects - validators
+        :param error_text: user-defined error text in case of errors
+        :param immutable: immutable field type
         :param kwargs: for future options
         """
 
-        self._name = None           # will be set by holder
-        self._holder_name = None    # will be set by holder
-        self._optional_name = name
+        self._name = None           # set by object holder (Document)
+        self._holder_name = None    # set by object holder (Document)
+        self._verbose_name = kwargs.get('verbose_name', name)
 
         self.required = required
         # TODO: support choices validation
         self.choices = choices
         self.validator = validator
+
+        # NOTE: new feature - chain of validators
+        self.validators = validators or []
+
         self.default = default() if callable(default) else default
+        self._value = default() if callable(default) else default
+
         self.error_text = error_text
 
         # validate default value
         if self.default:
-            self.default = self.validate(
-                self.default, err=ValidationDefaultError)
+            self.default = self.validate(value=self.default,
+                                         err=ValidationDefaultError)
+
+        self._immutable = immutable
+
+        # for backward compatibility
+        if self.validator:
+            warnings.warn('Use `validators` parameter instead of `validator`')
+            self.validators.append(self.validator)
     
     @property
     def name(self):
-        return self._optional_name or self._name
+        return self._verbose_name or self._name
     
     def validate(self, value, err=ValidationError):
         """Helper method to validate field.
 
-        :param value:
+        :param value: value to validate
         :return:
         """
         from simplemodels.models import Document
 
-        if self.validator is None:
+        if not self.validators:
             return value
 
-        try:
-            is_document = False
+        def is_document(validator):
             try:
                 # Handle an error with issubclass(lambda function)
-                is_document = issubclass(self.validator, Document)
+                return issubclass(validator, Document)
             except TypeError:
-                pass
+                return False
 
-            if is_document:
-                validated_val = self.validator(**value)
-            else:
-                validated_val = self.validator(value)
+        for validator in self.validators:
+            try:
+                if is_document(validator):
+                    # for nested documents validation is document creation itself
+                    doc_cls = validator
+                    value = doc_cls(**value)
+                else:
+                    value = validator(value)
 
-        # InvalidOperation for decimal, TypeError
-        except (ValueError, InvalidOperation, TypeError):
-            raise err("Wrong value '{!r}' for the field `{!r}`. {}"
-                                  "".format(value, self, self.error_text))
-        else:
-            return validated_val
+            # InvalidOperation for decimal, TypeError
+            except InvalidOperation:
+                raise err("Invalid decimal operation for '{!r}' for the field "
+                          "`{!r}`. {}".format(value, self, self.error_text))
+            except (ValueError, TypeError):
+                raise err("Wrong value '{!r}' for the field `{!r}`. "
+                          "{}".format(value, self, self.error_text))
+
+        return value
 
     def has_default(self):
         return self.default is not None
+
+    @staticmethod
+    def _add_default_validator(validator, kwargs):
+        """Helper method for subclasses
+
+        :param validator:
+        """
+        kwargs.setdefault('validators', [])
+
+        if validator not in kwargs['validators']:
+            kwargs['validators'].append(validator)
+        return kwargs
 
     def __get__(self, instance, owner):
         return instance.__dict__.get(self.name, self.default)
 
     def __set__(self, instance, value):
+        if self._immutable:
+            raise ImmutableFieldError('{!r} field is immutable'.format(self))
         value = self.validate(value)
         instance.__dict__[self.name] = value
 
@@ -97,34 +137,50 @@ class SimpleField(object):
 
 class IntegerField(SimpleField):
     def __init__(self, **kwargs):
-        kwargs['validator'] = int
+        self._add_default_validator(int, kwargs)
         super(IntegerField, self).__init__(**kwargs)
 
 
 class FloatField(SimpleField):
     def __init__(self, **kwargs):
-        kwargs['validator'] = float
+        self._add_default_validator(float, kwargs)
         super(FloatField, self).__init__(**kwargs)
 
 
 class DecimalField(SimpleField):
     def __init__(self, **kwargs):
-        kwargs['validator'] = Decimal
+        self._add_default_validator(Decimal, kwargs)
         super(DecimalField, self).__init__(**kwargs)
 
 
 class CharField(SimpleField):
-    def __init__(self, is_unicode=False, **kwargs):
+    def __init__(self, is_unicode=False, max_length=None, **kwargs):
         if PYTHON_VERSION == 2:
-            kwargs['validator'] = unicode if is_unicode else str
+            validator = unicode if is_unicode else str
         else:
-            kwargs['validator'] = str
+            validator = str
+
+        self._add_default_validator(validator, kwargs)
+
+        # Add max length validator
+        if max_length:
+            self.max_length = max_length
+            self._add_default_validator(
+                validator=self._validate_max_length,
+                kwargs=kwargs)
+
         super(CharField, self).__init__(**kwargs)
+
+    def _validate_max_length(self, value):
+        if len(value) > self.max_length:
+            raise ValidationError(
+                'Max length is exceeded ({} < {}) for the field {!r}'.format(
+                    len(value), self.max_length, self))
 
 
 class BooleanField(SimpleField):
     def __init__(self, **kwargs):
-        kwargs['validator'] = bool
+        self._add_default_validator(bool, kwargs)
         super(BooleanField, self).__init__(**kwargs)
 
 
@@ -132,5 +188,5 @@ class DocumentField(SimpleField):
     """Embedded document field"""
 
     def __init__(self, model, **kwargs):
-        kwargs['validator'] = model
+        self._add_default_validator(model, kwargs)
         super(DocumentField, self).__init__(**kwargs)

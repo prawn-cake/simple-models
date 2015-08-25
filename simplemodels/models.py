@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from simplemodels.exceptions import ValidationRequiredError, \
-    SetImmutableFieldError
+    ImmutableDocumentError
 from simplemodels.fields import SimpleField, DocumentField
 import six
 
@@ -54,6 +54,24 @@ class SimpleEmbeddedMeta(type):
         dct['_required_fields'] = tuple(_required_fields)
 
         return super(SimpleEmbeddedMeta, mcs).__new__(mcs, name, parents, dct)
+
+
+class Choices(AttributeDict):
+    """Choices class"""
+
+    def __init__(self, choices_list, **kwargs):
+        super(Choices, self).__init__(**kwargs)
+        if isinstance(choices_list, (tuple, list)):
+            for arg in choices_list:
+                if not isinstance(arg, basestring):
+                    raise ValueError(
+                        'Wrong choices arg: {}. '
+                        'Must be basestring instance'.format(type(arg)))
+                setattr(self, arg, arg)
+        else:
+            raise ValueError(
+                'Wrong choices_list argument type: {}, '
+                'must be a tuple or a list'.format(type(choices_list)))
 
 
 @six.add_metaclass(SimpleEmbeddedMeta)
@@ -116,30 +134,17 @@ class Document(AttributeDict):
         fields = getattr(cls, '_fields', {})
         return {k: v for k, v in kwargs.items() if k in fields}
 
-    @classmethod
-    def from_dict(cls, kwargs):
-        """Create model instance from dict or from another model for nested
-        fields
-
-        :param kwargs:
-        :return:
-        """
-        return cls(**cls._clean_kwargs(kwargs))
-
 
 class ImmutableDocument(Document):
     """Read only document. Useful"""
 
     def __setattr__(self, key, value):
-        raise SetImmutableFieldError(
+        raise ImmutableDocumentError(
             'Set operation is not allowed for {}'.format(
                 self.__class__.__name__))
 
     def __setitem__(self, key, value):
         return setattr(self, key, value)
-
-
-# TODO: implement searchable and filterable collection for embedded documents, think about it
 
 
 DictEmbeddedDocument = Document
