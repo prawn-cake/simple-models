@@ -29,7 +29,7 @@ Describe your models with specific or custom fields.
         name = CharField(required=True)         # raise exception if not passed
         address = DocumentField(model=Address)  # nested model validation
         date_of_birth = SimpleField(            # field with custom validator
-            validator=lambda value: datetime.strptime(value, '%Y-%m-%d'))
+            validators=[lambda value: datetime.strptime(value, '%Y-%m-%d')])
 
 
     person = Person(name='John', address=Address(street='6th Avenue'))
