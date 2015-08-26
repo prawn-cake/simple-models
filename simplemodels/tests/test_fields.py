@@ -59,7 +59,7 @@ class TypedFieldsTest(TestCase):
     def test_char(self):
         if PYTHON_VERSION == 2:
             instance = self.model(char_field='abc')
-            self.assertIsInstance(instance.char_field, str)
+            self.assertIsInstance(instance.char_field, unicode)
             self.assertEqual(instance.char_field, 'abc')
 
             instance = self.model(uchar_field='abc')
