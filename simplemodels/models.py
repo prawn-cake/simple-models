@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from simplemodels import utils
 from simplemodels.exceptions import ValidationRequiredError, \
     ImmutableDocumentError
 from simplemodels.fields import SimpleField, DocumentField
@@ -23,7 +24,7 @@ class AttributeDict(dict):
         self[key] = value
 
 
-class SimpleEmbeddedMeta(type):
+class DocumentMeta(type):
     """ Metaclass for collecting fields info """
 
     def __new__(mcs, name, parents, dct):
@@ -53,7 +54,7 @@ class SimpleEmbeddedMeta(type):
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)
 
-        return super(SimpleEmbeddedMeta, mcs).__new__(mcs, name, parents, dct)
+        return super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
 
 
 class Choices(AttributeDict):
@@ -63,7 +64,7 @@ class Choices(AttributeDict):
         super(Choices, self).__init__(**kwargs)
         if isinstance(choices_list, (tuple, list)):
             for arg in choices_list:
-                if not isinstance(arg, basestring):
+                if not isinstance(arg, utils.basestring):
                     raise ValueError(
                         'Wrong choices arg: {}. '
                         'Must be basestring instance'.format(type(arg)))
@@ -74,10 +75,12 @@ class Choices(AttributeDict):
                 'must be a tuple or a list'.format(type(choices_list)))
 
 
-@six.add_metaclass(SimpleEmbeddedMeta)
+@six.add_metaclass(DocumentMeta)
 class Document(AttributeDict):
 
     """ Main class to represent structured dict-like document """
+
+    ALLOW_EXTRA_FIELDS = False
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
@@ -132,7 +135,10 @@ class Document(AttributeDict):
     @classmethod
     def _clean_kwargs(cls, kwargs):
         fields = getattr(cls, '_fields', {})
-        return {k: v for k, v in kwargs.items() if k in fields}
+        if cls.ALLOW_EXTRA_FIELDS:  # put everything extra in the document
+            return {k: v for k, v in kwargs.items()}
+        else:
+            return {k: v for k, v in kwargs.items() if k in fields}
 
 
 class ImmutableDocument(Document):

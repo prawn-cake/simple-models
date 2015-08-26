@@ -154,7 +154,7 @@ class DecimalField(SimpleField):
 
 
 class CharField(SimpleField):
-    def __init__(self, is_unicode=False, max_length=None, **kwargs):
+    def __init__(self, is_unicode=True, max_length=None, **kwargs):
         if PYTHON_VERSION == 2:
             validator = unicode if is_unicode else str
         else:
