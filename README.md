@@ -58,15 +58,17 @@ Installation
     pip install simple-models
 
 
-Full documentation
-==================
+Documentation
+=============
 http://simple-models.readthedocs.org/
 
 
 Bug tracker
 ===========
 
-For all questions, suggestions, bugs let me know here, please: https://github.com/prawn-cake/simple-models/issues
+Warm welcome to suggestions and concerns
+
+https://github.com/prawn-cake/simple-models/issues
 
 
 License

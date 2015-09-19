@@ -6,5 +6,6 @@ install:
   - pip install coveralls
 script:
   - make test_ci
+  - make test_coverage
 after_success:
   coveralls

@@ -7,40 +7,68 @@ Simple models
 Description
 ###########
 
-Simple models allow to make structured dict-like (json serializable) models for your application.
+The library for defining message structures in declarative way.
+
+It enables to get more predictable behaviour when you work with any sort of messages your application send and receive.
+
+Along with it it increase robustness and stability of your code because of validation supporting.
+
+Validation here is followed by bit different approach. Field is valid if it can be forced to a validator function type.
+
 
 Main goals
-----------
+##########
 
-* Make declarative structures based on dict -- easy to understand, convenient to support;
-* Implement structured data models with low coupling -- use anywhere;
-* Should be able to validate structured data -- more expected behaviour for tons of code;
-* Simplified code which contains big nested structures especially for API integration;
-* Convenient way to use in IDE -- auto-complete using attributes instead dict keys;
-
+* Standardize complex API (json) messages in declarative way;
+* Transparent dict to json transformation. Every time you might feel that you work with just dict;
+* Validate input message parameters in the form-like style (not exactly, but similar);
+* Supporting complex nested message structures for describing complex API messages;
+* IDE auto-completion deeper than one dictionary key level;
 
 
 Basics
 ######
 
-Simple example
---------------
+Documents
+---------
+Document is a main holder object. So you could think about it as about dict subclass
+
+There are several types of documents:
+
+    * Document          -- dict-like document
+    * ImmutableDocument -- all fields are immutable
+
+Fields
+------
+Fields are document attributes. It's like "dict keys", but smarter
+
+There are several types of documents:
+    * SimpleField   -- basic field, can contain anything
+    * IntegerField
+    * FloatField
+    * DecimalField
+    * CharField
+    * BooleanField
+    * DocumentField -- nested document
+
+Example
+-------
 
 .. code-block:: python
 
-    from simplemodels.fields import SimpleField
-    from simplemodels.models import DictEmbeddedDocument
+    from simplemodels.fields import SimpleField, CharField, DocumentField, IntegerField
+    from simplemodels.models import Document
 
 
-    class Address(DictEmbeddedDocument):
-        city = SimpleField(default='Saint-Petersburg')
-        street = SimpleField()
+    class Address(Document):
+        city = CharField(default='Saint-Petersburg')
+        street = CharField()
 
 
-    class Person(DictEmbeddedDocument):
-        name = SimpleField(required=True)
-        address = SimpleField(type=Address)
-        insurance_number = SimpleField(type=int)  # object typing
+    class Person(Document):
+        name = CharField(required=True)
+        address = DocumentField(type=Address)
+        insurance_number = IntegerField()
 
 
     address = Address(street='Nevskii prospect 10')
@@ -51,12 +79,12 @@ Simple example
     {'city': 'Saint-Petersburg', 'street': 'Nevskii prospect 10'}
 
 
-    # dict subclass, nothing special
+    # dict subclass, all is as expected
     >>> address.items()
     [('city', 'Saint-Petersburg'), ('street', 'Nevskii prospect 10')]
 
 
-    # validation is supported
+    # Create person without required `name` field: got an ValidationError
     >>> person = Person()
     Traceback (most recent call last):
       File "<console>", line 1, in <module>
@@ -78,7 +106,7 @@ Simple example
     {'name': 'Max', 'address': {'city': 'Saint-Petersburg', 'street': 'Nevskii prospect 10'}, 'insurance_number': 111}
 
 
-    class Address(DictEmbeddedDocument):
+    class Address(Document):
         city = SimpleField(required=True)
         street = SimpleField()
 
@@ -92,86 +120,66 @@ Simple example
     True
 
 
+Custom field
+------------
+Let's define custom SHA1 field which will be convert given value to sha1
+
+.. code-block:: python
+
+    class SHA1Field(SimpleField):
+        def __init__(self, **kwargs):
+            def validate_sha1(value):
+                from hashlib import sha1
+                return sha1(value).hexdigest()
+
+            self._add_default_validator(validate_sha1, kwargs)
+            super(SHA1Field, self).__init__(**kwargs)
+
+    class Message(Document):
+        password = SHA1Field()
+
+    >>> message = Message(password='qwerty')
+    >>> message.password
+    'b1b3773a05c0ed0176787a4f1574ff0075f7521e'
+
+
+    # Same result without inheritance
+    def validate_sha1(value):
+        from hashlib import sha1
+        return sha1(value).hexdigest()
+
+    class Message(Document):
+        password = SimpleField(validators=[validate_sha1])
+
+
 Simple field
 ############
 
-There is only one field type - SimpleField which stores any value.
-You can add require or/and validation for it
+Basic field class. You can override it by yourself to create custom fields
 
 .. autoclass:: simplemodels.fields.SimpleField
     :members:
-    :private-members:
     :special-members:
 
-
-Fields type validation and validators
--------------------------------------
-
-From version 0.2.0 fields type validation is supported. See test examples below.
-
-From version 0.2.1:
- * old validation ways with `type` are **DEPRECATED**. Use `validator` instead (see below)
- * `DictEmbeddedDocument.get_instance` method is **DEPRECATED**, use direct constructor instead
-
-.. code-block:: python
-
-    from simplemodels.fields import SimpleField
-    from simplemodels.models import DictEmbeddedDocument
-
-    class PostAddress(DictEmbeddedDocument):
-        street = SimpleField(type=str)
-
-    class Person(DictEmbeddedDocument):
-        id = SimpleField(type=int)
-        name = SimpleField(required=True, default='TestName')
-        address = SimpleField(type=PostAddress)
-
-    person_1 = Person(id='1', name='Maks', address=PostAddress(street=999))
-
-    person_2 = Person(id='2', name='John', address=dict(street=999))
-
-    # NOTE: take a look at `id` and `address.street`. All values will be casted to selected `type`
-    self.assertIsInstance(person_1, Person)
-    self.assertEqual(person_1.id, 1)
-    self.assertEqual(person_1.address.street, '999')  # type casting will be applied
-
-    self.assertEqual(person_2.address.street, '999')  # type casting will be applied for dict value as well
+Validation
+----------
+Validation is a pipeline value processing. Value is considered valid if it can be forced to validator function.
 
 
-New field validation (starts from 0.2.1)
-----------------------------------------
+Verbose field name
+------------------
 
-New `validator` attribute has been added to SimpleField:
-
-* It must be callable
-* Use method `from_dict` for related `DictEmbeddedDocument` models
-
+Feature enables to use verbose (optional) field name.
 
 .. code-block:: python
 
-    class PostAddress(DictEmbeddedDocument):
-        city = SimpleField(validator=str)  # same behaviour as previous
-        delivery_date = SimpleField(       # advanced validator for datetime or whatever
-            validator=lambda value: datetime.strptime(
-                value, '%Y-%m-%dT%H:%M:%SZ'))
-
-    class Package(DictEmbeddedDocument):
-        id = SimpleField(validator=int)
-        address = SimpleField(validator=PostAddress.from_dict)  # validate address
-
-
-Optional field name (starts from 0.2.4)
----------------------------------------
-
-Feature enables to use optional field name with custom characters.
-
-.. code-block:: python
-
-    class MyModel(DictEmbeddedDocument):
-        InterestRate = SimpleField(validator=float,
-                                   name='Interest Rate',
-                                   required=True)
-        ...
+    class CountryInfo(Document):
+        Country = CharField()
+        Currency = CharField()
+        GDP = FloatField()
+        Inflation = FloatField()
+        InterestRate = FloatField(name='Interest Rate')  # space in the output name
+        Population = IntegerField()
 
 
 This will match a message like
@@ -181,8 +189,30 @@ This will match a message like
     {
         "Country": "Germany",
         "Currency": "EUR",
-        "GDP": "34,388",
-        "Inflation": "2.2",
-        "Interest Rate": "1.01",
-        "Population": "80,767,000"
+        "GDP": 34,388,
+        "Inflation": 2.2,
+        "Interest Rate": 1.01,
+        "Population": 80767000
     }
+
+
+Immutability
+============
+
+There are two types of immutability are supported:
+
+* Document-level immutability
+
+.. code-block:: python
+
+    class User(ImmutableDocument):
+        id = IntegerField(default=1)
+        name = CharField(default='John')
+
+* Field-level immutability
+
+.. code-block:: python
+
+    class User(Document):
+        name = CharField()
+        system_id = IntegerField(immutable=True)

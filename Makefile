@@ -27,9 +27,4 @@ test: env
 .PHONY: test_ci
 test_ci: env
 # target: test_ci - Run tests command adapt for CI systems
-	@$(PYTHON) -m unittest discover
-
-.PHONY: test_coverage
-# target: test_coverage - Run tests with coverage
-test_coverage: env
 	@$(COVERAGE) run --source=simplemodels $(PYTHON) -m unittest discover
