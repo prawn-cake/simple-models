@@ -2,7 +2,7 @@ simple-models
 =============
 [![Build Status](https://travis-ci.org/prawn-cake/simple-models.svg?branch=master)](https://travis-ci.org/prawn-cake/simple-models)
 [![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
-[![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg)](https://coveralls.io/r/prawn-cake/simple-models)
+[![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg?branch=master&service=github)](https://coveralls.io/github/prawn-cake/simple-models?branch=master)
 
 Simple models - dict-like models to structure your data in declarative way
 
