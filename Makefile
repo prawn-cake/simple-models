@@ -2,6 +2,7 @@
 ENV_DIR=$(CURDIR)/.env
 PYTHON=$(ENV_DIR)/bin/python
 COVERAGE=$(ENV_DIR)/bin/coverage
+NOSE=$(ENV_DIR)/bin/nosetests
 
 help:
 # target: help - Display callable targets
@@ -21,10 +22,9 @@ pypi_upload:
 .PHONY: test
 test: env
 # target: test - Run tests
-	@$(PYTHON) -m unittest discover
-	
+	@$(NOSE) --with-coverage .
 
 .PHONY: test_ci
 test_ci: env
 # target: test_ci - Run tests command adapt for CI systems
-	@$(COVERAGE) run --source=simplemodels $(PYTHON) -m unittest discover
+	@$(NOSE) --with-coverage .
