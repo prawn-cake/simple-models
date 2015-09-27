@@ -4,15 +4,23 @@ simple-models
 [![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg?branch=master&service=github)](https://coveralls.io/github/prawn-cake/simple-models?branch=master)
 
-Simple models - dict-like models to structure your data in declarative way
+Simple models - it is:
+
+* Validate your API messages with familiar form-like way;
+* Work with data flexibly with dict-like structures;
+* Use declarative way to describe your structures;
+
+
+Installation
+============
+
+    pip install simple-models
 
 
 Quick start
 ===========
 
-Describe your models with specific or custom fields. 
-
-"Link" your models to apply advanced validation with nested documents
+Describe your document model, use suitable fields or nested documents 
 
     from datetime import datetime
     from simplemodels.fields import IntegerField, CharField, DocumentField, SimpleField
@@ -52,15 +60,10 @@ Describe your models with specific or custom fields.
 
 
 
-Installation
-============
-
-    pip install simple-models
-
 
 Documentation
 =============
-http://simple-models.readthedocs.org/
+http://simple-models.readthedocs.org/ (TO BE UPDATED)
 
 
 Bug tracker

@@ -7,20 +7,19 @@ import six
 from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
     ValidationDefaultError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
-    DocumentField
-from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
-    Choices
+    DocumentField, FloatField
+from simplemodels.models import AttributeDict, Document, ImmutableDocument
 
 
 ### Test model classes ###
 
 
 class MailboxItem(Document):
-    TYPES = Choices(["SUGGESTION", "MAIL"])
-
     subject = SimpleField(default='')
     body = SimpleField(default='')
-    type = SimpleField(choices=TYPES, max_length=10, default=TYPES.MAIL)
+    type = SimpleField(choices=["SUGGESTION", "MAIL"],
+                       max_length=10,
+                       default='MAIL')
     # received_at = SimpleField(default=timezone.now)
     received_at = SimpleField(default='')
     is_read = SimpleField(default=False)
@@ -223,7 +222,7 @@ class DocumentTest(TestCase):
 
     def test_model_verbose_name(self):
         class RateModel(Document):
-            InterestRate = SimpleField(validator=float, name='Interest Rate')
+            InterestRate = FloatField(name='Interest Rate')
 
         data = {"Interest Rate": "1.01"}
         my_model = RateModel(**data)
@@ -237,9 +236,7 @@ class DocumentTest(TestCase):
 
     def test_model_verbose_name_required(self):
         class RateModel(Document):
-            InterestRate = SimpleField(validator=float,
-                                       name='Interest Rate',
-                                       required=True)
+            InterestRate = FloatField(name='Interest Rate', required=True)
         data = {"Interest Rate": "1.01"}
         my_model = RateModel(**data)
         self.assertEqual(my_model['Interest Rate'], 1.01)
@@ -265,6 +262,24 @@ class DocumentTest(TestCase):
             level='DEBUG'  # extra field isn't described in the document
         )
         self.assertEqual(msg.level, 'DEBUG')
+
+    def test_choices_option(self):
+        class LogMessage(Document):
+            level = CharField(choices=['INFO', 'DEBUG', 'ERROR'])
+            text = CharField(max_length=500)
+
+        with self.assertRaises(ValueError):
+            # Put wrong log level
+            message = LogMessage(level='FATAL', text='Test log message')
+            self.assertIsNone(message)
+
+        message = LogMessage(level='DEBUG', text='Test log message')
+        self.assertTrue(message)
+
+        with self.assertRaises(ValueError) as err:
+            class Message(Document):
+                tag = CharField(choices='INFO, DEBUG')
+            self.assertIn('Wrong choices data type', str(err))
 
 
 class ValidationTest(TestCase):
@@ -329,30 +344,3 @@ class ImmutableDocumentTest(TestCase):
         # Try to set mutable top-level name field
         user.name = 'Jorge'
         self.assertEqual(user.name, 'Jorge')
-
-
-class ChoicesTest(TestCase):
-    def test_creation(self):
-        choices = Choices(['MAIL', 'SUGGESTION'])
-        self.assertIsInstance(choices, Choices)
-
-    def test_contains(self):
-        choices = Choices(['MAIL', 'SUGGESTION'])
-        self.assertIn('MAIL', choices)
-        self.assertNotIn('EMAIL', choices)
-
-    def test_equality(self):
-        choices = Choices(['MAIL', '1'])
-        self.assertEqual(choices.MAIL, 'MAIL')
-        self.assertEqual(choices['1'], '1')
-
-    def test_errors(self):
-        with self.assertRaises(ValueError) as err:
-            choices = Choices(['MAIL', '1', None])
-            self.assertIsNone(choices)
-            self.assertIn('Must be basestring instance', err)
-
-        with self.assertRaises(ValueError) as err:
-            choices = Choices({'MAIL', '1', None})
-            self.assertIsNone(choices)
-            self.assertIn('Wrong choices_list argument type', err)

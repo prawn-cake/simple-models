@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from simplemodels import utils
 from simplemodels.exceptions import ValidationRequiredError, \
     ImmutableDocumentError
 from simplemodels.fields import SimpleField, DocumentField
@@ -55,24 +54,6 @@ class DocumentMeta(type):
         dct['_required_fields'] = tuple(_required_fields)
 
         return super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
-
-
-class Choices(AttributeDict):
-    """Choices class"""
-
-    def __init__(self, choices_list, **kwargs):
-        super(Choices, self).__init__(**kwargs)
-        if isinstance(choices_list, (tuple, list)):
-            for arg in choices_list:
-                if not isinstance(arg, utils.basestring):
-                    raise ValueError(
-                        'Wrong choices arg: {}. '
-                        'Must be basestring instance'.format(type(arg)))
-                setattr(self, arg, arg)
-        else:
-            raise ValueError(
-                'Wrong choices_list argument type: {}, '
-                'must be a tuple or a list'.format(type(choices_list)))
 
 
 @six.add_metaclass(DocumentMeta)
