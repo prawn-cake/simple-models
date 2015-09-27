@@ -26,7 +26,7 @@ class SimpleField(object):
         :param name: optional name
         :param default: default value
         :param required: is field required
-        :param choices: choices list. See utils.Choices
+        :param choices: choices list.
         :param validator: callable object to validate a value. DEPRECATED
         :param validators: list of callable objects - validators
         :param error_text: user-defined error text in case of errors
@@ -39,7 +39,10 @@ class SimpleField(object):
         self._verbose_name = kwargs.get('verbose_name', name)
 
         self.required = required
-        # TODO: support choices validation
+        if choices and not isinstance(choices, (tuple, list, set)):
+            raise ValueError(
+                'Wrong choices data type {}, '
+                'must be (tuple, list, set)'.format(type(choices)))
         self.choices = choices
         self.validator = validator
 
@@ -88,7 +91,7 @@ class SimpleField(object):
         for validator in self.validators:
             try:
                 if is_document(validator):
-                    # for nested documents validation is document creation itself
+                    # use document as a validator for nested documents
                     doc_cls = validator
                     value = doc_cls(**value)
                 else:
@@ -102,7 +105,17 @@ class SimpleField(object):
                 raise err("Wrong value '{!r}' for the field `{!r}`. "
                           "{}".format(value, self, self.error_text))
 
+        if self.choices:
+            if value not in self.choices:
+                raise ValueError(
+                    'Value {} is restricted by choices: {}'.format(
+                        value, self.choices))
         return value
+
+    @classmethod
+    def _validate_choices(cls, value, choices):
+        if value not in choices:
+            pass
 
     def has_default(self):
         return self.default is not None
