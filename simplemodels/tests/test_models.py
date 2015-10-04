@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from unittest import TestCase
 from datetime import datetime
 
@@ -7,7 +8,7 @@ import six
 from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
     ValidationDefaultError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
-    DocumentField, FloatField
+    DocumentField, FloatField, DecimalField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
 
 
@@ -77,9 +78,9 @@ class DocumentTest(TestCase):
             microAmount = SimpleField()
 
         class BidEmbedded(Document):
-            xsi_type = SimpleField('BidEmbedded')
+            xsi_type = CharField(default='BidEmbedded')
             # xsi_type = fields.StringField(default='BidEmbedded')
-            contentBid = SimpleField(default=Money())
+            contentBid = DocumentField(model=Money)
 
         bid = BidEmbedded()
 
@@ -281,6 +282,13 @@ class DocumentTest(TestCase):
                 tag = CharField(choices='INFO, DEBUG')
             self.assertIn('Wrong choices data type', str(err))
 
+    def test_mutable_default_values(self):
+        with self.assertRaises(ValueError):
+            class Post(Document):
+                tags = SimpleField(default=['news'])
+            p = Post()
+            self.assertIsNone(p)
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
@@ -344,3 +352,25 @@ class ImmutableDocumentTest(TestCase):
         # Try to set mutable top-level name field
         user.name = 'Jorge'
         self.assertEqual(user.name, 'Jorge')
+
+
+class JsonValidationTest(TestCase):
+    def setUp(self):
+        class Address(Document):
+            city = CharField(default='St.Petersburg')
+
+        class User(Document):
+            id = IntegerField(default=0)
+            name = CharField(default='John')
+            height = FloatField(default=165.5)
+            # salary = DecimalField(default=10000)
+            address = DocumentField(model=Address)
+            is_married = BooleanField(default=False)
+            # social_networks = ListField(item_types=[str],
+            #                             default=['facebook.com', 'google.com'])
+
+        self.user = User()
+
+    def test_json_dumps(self):
+        serialized = json.dumps(self.user)
+        self.assertIsInstance(serialized, str)
