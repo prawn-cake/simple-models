@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
+import copy
 
 from decimal import Decimal, InvalidOperation
 import warnings
-
 import six
 
 from simplemodels import PYTHON_VERSION
@@ -12,7 +12,7 @@ from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
 
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
-           'CharField', 'BooleanField']
+           'CharField', 'BooleanField', 'ListField']
 
 
 class SimpleField(object):
@@ -49,11 +49,16 @@ class SimpleField(object):
         # NOTE: new feature - chain of validators
         self.validators = validators or []
 
-        self.default = default() if callable(default) else default
-        self._value = default() if callable(default) else default
+        if callable(default):
+            self.default = default
+            self._value = None  # will be set by Document
+        else:
+            self.default = self._validate_immutable(default)
+            self._value = copy.deepcopy(self.default)
 
         self.error_text = error_text
 
+        # TODO: forbid to set mutable types as a default
         # validate default value
         if self.default:
             self.default = self.validate(value=self.default,
@@ -113,12 +118,16 @@ class SimpleField(object):
         return value
 
     @classmethod
-    def _validate_choices(cls, value, choices):
-        if value not in choices:
-            pass
+    def _validate_immutable(cls, value):
+        """Prevent mutable default values
 
-    def has_default(self):
-        return self.default is not None
+        :return: :raise ValueError:
+        """
+        if isinstance(value, (list, dict, set, bytearray)):
+            raise ValueError(
+                'Default value must be immutable, given {}'.format(
+                    (value, type(value))))
+        return value
 
     @staticmethod
     def _add_default_validator(validator, kwargs):
@@ -203,3 +212,44 @@ class DocumentField(SimpleField):
     def __init__(self, model, **kwargs):
         self._add_default_validator(model, kwargs)
         super(DocumentField, self).__init__(**kwargs)
+
+
+class ListField(SimpleField):
+    """ List of items field"""
+
+    def __init__(self, item_types, **kwargs):
+        if not isinstance(item_types, (list, set, tuple)):
+            raise ValueError(
+                'Wrong item_types data format, must be list, '
+                'set or tuple, given {}'.format(type(item_types)))
+        self._add_default_validator(list, kwargs)
+
+        self._item_types = []
+
+        # Item type must be callable
+        errors = []
+        for t in item_types:
+            if callable(t):
+                self._item_types.append(t)
+            else:
+                errors.append('{} item type must be callable'.format(t))
+
+        if errors:
+            raise ValueError('\n'.join(errors))
+
+        super(ListField, self).__init__(**kwargs)
+
+    def validate(self, values_list, err=ValidationError):
+        if not isinstance(values_list, list):
+            raise err('Wrong values type {}, must be list'.format(
+                type(values_list)))
+
+        errors = []
+        for item in values_list:
+            if not isinstance(item, tuple(self._item_types)):
+                errors.append(
+                    'List value {} has wrong type ({}), must be one of '
+                    '{}'.format(item, type(item).__name__, self._item_types))
+        if errors:
+            raise err('\n'.join(errors))
+        return values_list
