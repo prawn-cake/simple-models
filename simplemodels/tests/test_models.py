@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 from unittest import TestCase
-from datetime import datetime
-
+from datetime import datetime, timedelta
+import time
 import six
 
 from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
@@ -130,6 +130,25 @@ class DocumentTest(TestCase):
         td_2.is_read = False
         self.assertTrue(td.is_read)
         self.assertFalse(td_2.is_read)
+
+    def test_default_values_init(self):
+        class Message(Document):
+            ts = SimpleField(default=datetime.now)
+
+        # Expect that default value will differ at 1 sec
+        msg_1 = Message()
+        time.sleep(1)
+        msg_2 = Message()
+        self.assertEqual((msg_2.ts - msg_1.ts).seconds, 1)
+
+    def test_wrong_default_callable(self):
+        get_id = lambda _: 'Not int'
+
+        with self.assertRaises(ValidationError):
+            class Message(Document):
+                id = IntegerField(default=get_id)
+            msg = Message()
+            self.assertIsNone(msg)
 
     def test_getting_classname(self):
         self.assertEqual(Address.__name__, 'Address')

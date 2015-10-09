@@ -85,7 +85,10 @@ class Document(AttributeDict):
         for field_name, field_obj in self._fields.items():
 
             # Get field value or set default
-            field_val = kwargs.get(field_name, getattr(field_obj, 'default'))
+            default_val = getattr(field_obj, 'default')
+            field_val = kwargs.get(
+                field_name,
+                default_val() if callable(default_val) else default_val)
 
             # Validate required fields
             cls._validate_require(

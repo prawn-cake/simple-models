@@ -49,9 +49,12 @@ class SimpleField(object):
         # NOTE: new feature - chain of validators
         self.validators = validators or []
 
-        self.default = default() if callable(default) \
-            else self._validate_default(default)
-        self._value = copy.deepcopy(self.default)
+        if callable(default):
+            self.default = default
+            self._value = None  # will be set by Document
+        else:
+            self.default = self._validate_immutable(default)
+            self._value = copy.deepcopy(self.default)
 
         self.error_text = error_text
 
@@ -115,7 +118,7 @@ class SimpleField(object):
         return value
 
     @classmethod
-    def _validate_default(cls, value):
+    def _validate_immutable(cls, value):
         """Prevent mutable default values
 
         :return: :raise ValueError:
