@@ -11,8 +11,8 @@ Simple models - it is:
 * Work with data flexibly with dict-like structures;
 
 
-Installation
-============
+Install
+=======
 
     pip install simple-models
 
@@ -59,6 +59,27 @@ Describe your document model, use suitable fields or nested documents
     '{"date_of_birth": null, "id": 0, "address": {"city": "Saint-Petersburg", "street": "6th Avenue"}, "name": "John"}'
 
 
+Fields
+======
+* `SimpleField`     -- generic field (useful in cases when other fields are not)
+* `IntegerField`    -- integer field
+* `FloatField`      -- float field
+* `DecimalField`    -- decimal field
+* `CharField`       -- char field (python2/3 portable)
+* `BooleanField`    -- boolean field
+* `ListField`       -- list of items field *(new from v0.3.2)*
+
+ListField
+---------
+Allows you to define list of items
+
+Example:
+
+    class Post(Document):
+        text = CharField()
+        tags = ListField(item_types=[str], default=['news'])
+
+**NOTE:** mutable default values are protected (deep copied) and works as expected 
 
 
 Documentation

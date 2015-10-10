@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """ Fields for DictEmbedded model """
 import copy
-
 from decimal import Decimal, InvalidOperation
-import warnings
+
 import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
     ImmutableFieldError
+from simplemodels.helpers import is_document
 
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
@@ -19,9 +19,10 @@ class SimpleField(object):
 
     """Class-field with descriptor for DictEmbeddedDocument"""
 
+    MUTABLE_TYPES = (list, dict, set, bytearray)
+
     def __init__(self, default=None, required=False, choices=None, name=None,
-                 validator=None, validators=None, error_text='',
-                 immutable=False, **kwargs):
+                 validators=None, error_text='', immutable=False, **kwargs):
         """
         :param name: optional name
         :param default: default value
@@ -44,54 +45,48 @@ class SimpleField(object):
                 'Wrong choices data type {}, '
                 'must be (tuple, list, set)'.format(type(choices)))
         self.choices = choices
-        self.validator = validator
 
         # NOTE: new feature - chain of validators
         self.validators = validators or []
-
-        if callable(default):
-            self.default = default
-            self._value = None  # will be set by Document
-        else:
-            self.default = self._validate_immutable(default)
-            self._value = copy.deepcopy(self.default)
-
+        self._value = None  # will be set by Document
         self.error_text = error_text
 
-        # TODO: forbid to set mutable types as a default
-        # validate default value
-        if self.default:
-            self.default = self.validate(value=self.default,
-                                         err=ValidationDefaultError)
+        # Set default value
+        self._set_default_value(default)
 
         self._immutable = immutable
 
-        # for backward compatibility
-        if self.validator:
-            warnings.warn('Use `validators` parameter instead of `validator`')
-            self.validators.append(self.validator)
-    
+    def _set_default_value(self, value):
+        """Set default value, handle mutable default parameters,
+        delegate set callable default value to Document
+
+        :param value: default value
+        """
+        if isinstance(value, self.MUTABLE_TYPES):
+            self.default = lambda: copy.deepcopy(value)
+        else:
+            self.default = value
+
+        if value is not None:
+            if callable(self.default):
+                self.validate(value=self.default(), err=ValidationDefaultError)
+            else:
+                self.default = self.validate(value=self.default,
+                                             err=ValidationDefaultError)
+
     @property
     def name(self):
         return self._verbose_name or self._name
-    
+
     def validate(self, value, err=ValidationError):
         """Helper method to validate field.
 
         :param value: value to validate
-        :return:
+        :return: value
         """
-        from simplemodels.models import Document
 
         if not self.validators:
             return value
-
-        def is_document(validator):
-            try:
-                # Handle an error with issubclass(lambda function)
-                return issubclass(validator, Document)
-            except TypeError:
-                return False
 
         for validator in self.validators:
             try:
@@ -117,18 +112,6 @@ class SimpleField(object):
                         value, self.choices))
         return value
 
-    @classmethod
-    def _validate_immutable(cls, value):
-        """Prevent mutable default values
-
-        :return: :raise ValueError:
-        """
-        if isinstance(value, (list, dict, set, bytearray)):
-            raise ValueError(
-                'Default value must be immutable, given {}'.format(
-                    (value, type(value))))
-        return value
-
     @staticmethod
     def _add_default_validator(validator, kwargs):
         """Helper method for subclasses
@@ -151,10 +134,13 @@ class SimpleField(object):
         instance.__dict__[self.name] = value
 
     def __repr__(self):
-        return six.u("{}.{}".format(self._holder_name, self.name))
+        if self._holder_name and self.name:
+            return six.u("{}.{}".format(self._holder_name, self.name))
+        else:
+            return self.__class__.__name__
 
     def __unicode__(self):
-        return six.u("{}.{}".format(self._holder_name, self.name))
+        return self.__repr__()
 
 
 class IntegerField(SimpleField):
@@ -224,6 +210,8 @@ class ListField(SimpleField):
                 'set or tuple, given {}'.format(type(item_types)))
         self._add_default_validator(list, kwargs)
 
+        # list of possible item instances, for example: [str, int, float]
+        # NOTE: unicode value will be accepted for `str` type
         self._item_types = []
 
         # Item type must be callable
@@ -239,14 +227,26 @@ class ListField(SimpleField):
 
         super(ListField, self).__init__(**kwargs)
 
-    def validate(self, values_list, err=ValidationError):
+    def validate(self, value, err=ValidationError):
+        """Custom list field validate method
+
+        :param value: values list, save value name for interface compatibility
+        :param err: Exception class
+        :return: :raise err:
+        """
+        values_list = value
         if not isinstance(values_list, list):
             raise err('Wrong values type {}, must be list'.format(
                 type(values_list)))
 
         errors = []
         for item in values_list:
-            if not isinstance(item, tuple(self._item_types)):
+            types = tuple(self._item_types)
+            if not isinstance(item, types):
+                # Unicode hook for python 2, accept unicode type as a str value
+                if PYTHON_VERSION == 2 and str in types:
+                    if isinstance(item, unicode):
+                        continue
                 errors.append(
                     'List value {} has wrong type ({}), must be one of '
                     '{}'.format(item, type(item).__name__, self._item_types))

@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import json
 from unittest import TestCase
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
+
 import six
 
 from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
     ValidationDefaultError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
-    DocumentField, FloatField, DecimalField, BooleanField, ListField
+    DocumentField, FloatField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
 
-
-### Test model classes ###
+# Test model classes
 
 
 class MailboxItem(Document):
@@ -48,7 +48,7 @@ class Person(Document):
     address = SimpleField(validatos=[Address])
 
 
-#### End of test model classes ###
+# End of test model classes
 
 
 class AttributeDictTest(TestCase):
@@ -142,7 +142,8 @@ class DocumentTest(TestCase):
         self.assertEqual((msg_2.ts - msg_1.ts).seconds, 1)
 
     def test_wrong_default_callable(self):
-        get_id = lambda _: 'Not int'
+        def get_id():
+            return 'Not int'
 
         with self.assertRaises(ValidationError):
             class Message(Document):
@@ -206,7 +207,7 @@ class DocumentTest(TestCase):
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
         # city is not declared as an Address field
-        self.assertRaises(KeyError, getattr, a.address, 'city')
+        self.assertRaises(AttributeError, getattr, a.address, 'city')
 
         # Expect a ValidationError: wrong 'address' format is passed
         self.assertRaises(
@@ -302,11 +303,14 @@ class DocumentTest(TestCase):
             self.assertIn('Wrong choices data type', str(err))
 
     def test_mutable_default_values(self):
-        with self.assertRaises(ValueError):
-            class Post(Document):
-                tags = SimpleField(default=['news'])
-            p = Post()
-            self.assertIsNone(p)
+        class Post(Document):
+            tags = SimpleField(default=['news'])
+        p = Post()
+        self.assertEqual(p.tags, ['news'])
+        p.tags.append('sport')
+        self.assertEqual(p.tags, ['news', 'sport'])
+        p2 = Post()
+        self.assertEqual(p2.tags, ['news'])
 
 
 class ValidationTest(TestCase):
@@ -385,11 +389,25 @@ class JsonValidationTest(TestCase):
             # salary = DecimalField(default=10000)
             address = DocumentField(model=Address)
             is_married = BooleanField(default=False)
-            # social_networks = ListField(item_types=[str],
-            #                             default=['facebook.com', 'google.com'])
+            social_networks = ListField(
+                item_types=[str], default=['facebook.com', 'google.com'])
 
+        self.user_cls = User
         self.user = User()
 
     def test_json_dumps(self):
+        # Serialize document to json
         serialized = json.dumps(self.user)
         self.assertIsInstance(serialized, str)
+
+        # Deserialize
+        deserialized = json.loads(serialized)
+        self.assertIsInstance(deserialized, dict)
+
+        user = self.user_cls(**deserialized)
+        self.assertEqual(user.id, 0)
+        self.assertEqual(user.name, 'John')
+        self.assertEqual(user.height, 165.5)
+        self.assertEqual(user.address.city, 'St.Petersburg')
+        self.assertEqual(user.is_married, False)
+        self.assertEqual(user.social_networks, ['facebook.com', 'google.com'])

@@ -11,12 +11,15 @@ class AttributeDict(dict):
 
     """Dict wrapper with access to keys via attributes"""
 
-    def __getattr__(self, item):
+    def __getattr__(self, name):
         # do not affect magic methods like __deepcopy__
-        if item.startswith('__') and item.endswith('__'):
-            return super(AttributeDict, self).__getattr__(self, item)
+        if name.startswith('__') and name.endswith('__'):
+            return super(AttributeDict, self).__getattr__(self, name)
 
-        return self[item]
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError("Attribute '{}' doesn't exist".format(name))
 
     def __setattr__(self, key, value):
         super(AttributeDict, self).__setattr__(key, value)
