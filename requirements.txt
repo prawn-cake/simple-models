@@ -1,8 +1,6 @@
-# test related packages
-coverage==3.7.1
-bumpversion==0.5.3
-nose==1.3.7
+bumpversion     == 0.5.3
 
 # Python 2 to 3 compatibility
-six==1.9.0
+
+six             == 1.9.0
 

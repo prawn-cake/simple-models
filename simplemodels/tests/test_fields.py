@@ -124,3 +124,14 @@ class TypedFieldsTest(TestCase):
             post.tags = [Decimal(1)]
             # NOTE: This doesn't work
             # post.tags.append(123)
+
+    def test_list_field_defaults(self):
+        class Post(Document):
+            text = CharField()
+            tags = ListField(item_types=[str], default=['news'])
+
+        p1 = Post()
+        p1.tags.append('sport')
+        self.assertEqual(p1.tags, ['news', 'sport'])
+        p2 = Post()
+        self.assertEqual(p2.tags, ['news'])
