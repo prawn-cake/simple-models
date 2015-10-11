@@ -6,7 +6,7 @@ simple-models
 
 Simple models - it is:
 
-* Define API messages as a models, in declarative way;
+* Define API messages as models, in declarative way;
 * Validate API messages with familiar form-like way;
 * Work with data flexibly with dict-like structures;
 

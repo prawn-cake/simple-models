@@ -8,7 +8,7 @@ import six
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
     ImmutableFieldError
-from simplemodels.helpers import is_document
+from simplemodels.utils import is_document
 
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
