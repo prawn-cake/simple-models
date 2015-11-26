@@ -82,6 +82,7 @@ class SimpleField(object):
         """Helper method to validate field.
 
         :param value: value to validate
+        :param err: simplemodels.exceptions.ValidationError class
         :return: value
         """
 
@@ -102,6 +103,10 @@ class SimpleField(object):
                 raise err("Invalid decimal operation for '{!r}' for the field "
                           "`{!r}`. {}".format(value, self, self.error_text))
             except (ValueError, TypeError):
+                # Accept None value for non-required fields
+                if not self.required and value is None:
+                    return value
+
                 raise err("Wrong value '{!r}' for the field `{!r}`. "
                           "{}".format(value, self, self.error_text))
 

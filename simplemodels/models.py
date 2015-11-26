@@ -93,9 +93,8 @@ class Document(AttributeDict):
                 default_val() if callable(default_val) else default_val)
 
             # Validate required fields
-            self._validate_require(name=field_name,
-                                   value=field_val,
-                                   errors=errors_list)
+            self._validate_required(
+                name=field_name, value=field_val, errors=errors_list)
 
             # Build model structure
             if field_name in kwargs:
@@ -112,7 +111,7 @@ class Document(AttributeDict):
         return kwargs
 
     @classmethod
-    def _validate_require(cls, name, value, errors):
+    def _validate_required(cls, name, value, errors):
         if name in getattr(cls, '_required_fields', []):
             if value is None or value == '':
                 errors.append("Field '{}' is required for {}".format(
