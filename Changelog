@@ -1,0 +1,337 @@
+Changelog
+=========
+
+0.3.3 (2015-11-26)
+------------------------
+
+Fix
+~~~
+
+- Allow None values for non required fields. [Maksim Ekimovskii]
+
+Other
+~~~~~
+
+- Bump version: 0.3.2 → 0.3.3. [Maksim Ekimovskii]
+
+- Updated README, added more tests. [Maksim Ekimovskii]
+
+- Code refactoring: moved helpers to utils.py, removed helpers.py, minor
+  renamings and clean up. [Maksim Ekimovskii]
+
+- Use setuptools instead of distutils in setup.py. [Maksim Ekimovskii]
+
+- Added setup.cfg, added bdist_wheel section. [Maksim Ekimovskii]
+
+- Merge tag '0.3.2' into develop. [Maksim Ekimovskii]
+
+0.3.2 (2015-10-10)
+------------------
+
+- Merge branch 'release/0.3.2' [Maksim Ekimovskii]
+
+- Bump version: 0.3.1 → 0.3.2. [Maksim Ekimovskii]
+
+- Fix ListField, make it json serialize compatible for python2/3; Fixed
+  some of the bugs for default field value; Refactoring; Added
+  experimental validator wrapper is_instance; Raise AttributeError
+  instead of KeyError for AttributeDict; Updated tests. [Maksim
+  Ekimovskii]
+
+- Merge tag '0.3.1' into develop. [Maksim Ekimovskii]
+
+0.3.1 (2015-10-09)
+------------------
+
+- Merge branch 'release/0.3.1' [Maksim Ekimovskii]
+
+- Bump version: 0.3.0 → 0.3.1. [Maksim Ekimovskii]
+
+- Initialize callable default values at document init point; Added new
+  tests. [Maksim Ekimovskii]
+
+- Implemented ListField, added tests; Forbid mutable default parameters;
+  Remove redundant code. [Maksim Ekimovskii]
+
+- Merge tag '0.3.0' into develop. [Maksim Ekimovskii]
+
+  Release 0.3.0
+
+0.3.0 (2015-09-27)
+------------------
+
+- Merge branch 'release/0.3.0' [Maksim Ekimovskii]
+
+- Updated bumpversion config. [Maksim Ekimovskii]
+
+- Bump version: 0.2.5 → 0.3.0. [Maksim Ekimovskii]
+
+- Implemented choices feature, removed redundant code, updated tests and
+  README. [Maksim Ekimovskii]
+
+- Updated coverage shield. [Maksim Ekimovskii]
+
+0.2.5 (2015-09-19)
+------------------
+
+- Bump version: 0.2.4 → 0.2.5. [Maksim Ekimovskii]
+
+- Added nose tests lib, updated Makefile test commands. [Maksim
+  Ekimovskii]
+
+- Updated docs, updated travis test commands. [Maksim Ekimovskii]
+
+- Fixed tests. [Maksim Ekimovskii]
+
+- Implemented ALLOW_EXTRA_FIELDS document attribute; Improve python 3
+  compatibility. [Maksim Ekimovskii]
+
+- Fixed README. [Maksim Ekimovskii]
+
+- Implemented new validators pipeline; Added new immutable field option;
+  Fixed nested behaviour; Updated tests. [Maksim Ekimovskii]
+
+- Validate model defaults; Fixed working with nested models; Added
+  ImmutableDocument with immutable fields; Code refactoring: rename
+  DictEmbeddedDocument --> Document with backward compatibility; Added
+  unittests. [Maksim Ekimovskii]
+
+- Replace SimpleField get_name() with property name. [Maksim Ekimovskii]
+
+- Remove get_instance constructor; Fixed tests. [Maksim Ekimovskii]
+
+- Code refactoring, remove deprecated type parameter from SimpleField;
+  Added typed field types: IntegerField, Float, etc; Optimize
+  validations; Added tests. [Maksim Ekimovskii]
+
+- Updated docs. [Maksim Ekimovskii]
+
+- Updated version. [Maksim Ekimovskii]
+
+0.2.4 (2015-04-25)
+------------------
+
+- Bump version: 0.2.3 → 0.2.4. [Maksim Ekimovskii]
+
+- Implemented new feature - optional SimpleField name; Added tests;
+  Minor fixes; Refactoring. [Maksim Ekimovskii]
+
+- Added bumpversion. [Maksim Ekimovskii]
+
+- Exception refactoring. [Maksim Ekimovskii]
+
+- Added new field attribute 'error_text' to help to debug validation
+  error messages; Distinguish default values whether callable or not;
+  Minor refactoring; [Maksim Ekimovskii]
+
+- Merge tag '0.1.20.2.3' into develop. [Maksim Ekimovskii]
+
+  0.2.3
+
+- Merge branch 'release/0.2.3' [Maksim Ekimovskii]
+
+- Updated setup.py. [Maksim Ekimovskii]
+
+- Fixed DictEmbeddedDocument set default functionality + validation;
+  Updated tests. [Maksim Ekimovskii]
+
+- Merge tag '0.1.20.2.2' into develop. [Maksim Ekimovskii]
+
+  0.2.2
+
+- Merge branch 'release/0.2.2' [Maksim Ekimovskii]
+
+- Updated setup.py. [Maksim Ekimovskii]
+
+- Fixed default value checker; added new test. [Maksim Ekimovskii]
+
+- Updated makefile. [Maksim Ekimovskii]
+
+- Added MANIFEST.in. [Maksim Ekimovskii]
+
+- Syntax sugar. [Maksim Ekimovskii]
+
+- Integrate six lib to python 2 to 3 compatibility. [Maksim Ekimovskii]
+
+- Added coverage badge. [Maksim Ekimovskii]
+
+- Merge branch 'master' into develop. [Maksim Ekimovskii]
+
+- Updated .travis.yml #2. [Maksim Ekimovskii]
+
+- Merge branch 'master' into develop. [Maksim Ekimovskii]
+
+- Updated .travis.yml. [Maksim Ekimovskii]
+
+- Added requirements.txt. [Maksim Ekimovskii]
+
+- Updated README. [Maksim Ekimovskii]
+
+- Updated README. [Maksim Ekimovskii]
+
+0.2.1 (2015-02-12)
+------------------
+
+- Merge tag '0.1.20.2.1' into develop. [Maksim Ekimovskii]
+
+  0.2.1
+
+- Merge branch 'release/0.2.1' [Maksim Ekimovskii]
+
+- Updated version. [Maksim Ekimovskii]
+
+- Updated README. [Maksim Ekimovskii]
+
+- Updated docs; added test_coverage make commandl updated travis cfg.
+  [Maksim Ekimovskii]
+
+- Updated coveragerc; updated tests. [Maksim Ekimovskii]
+
+- Added new SimpleField validator feature -> it will be replace 'type'
+  parameter; Updated meta models, added field holder name; Splitted
+  validation, moved it to SimpleField.validator; Added new tests;
+  Refactoring, cleanup and docstrings coverage. [Maksim Ekimovskii]
+
+- Cleanup and refactoring. [Maksim Ekimovskii]
+
+- Added strip_kwargs method for DictEmbeddedDocument. [Maksim
+  Ekimovskii]
+
+- Models refactoring, improve readability; added .coveragerc. [Maksim
+  Ekimovskii]
+
+- Updated tests and lib description. [Maksim Ekimovskii]
+
+- Rename _type -> type SimpleField attribute. [Maksim Ekimovskii]
+
+- Merge branch 'master' of github.com:prawn-cake/simple-models. [Maksim
+  Ekimovskii]
+
+- Update README.md. [Maksim]
+
+- Merge branch 'develop' [Maksim Ekimovskii]
+
+- Fixed .travis.yml. [Maksim Ekimovskii]
+
+- Merge branch 'master' of github.com:prawn-cake/simple-models. [Maksim
+  Ekimovskii]
+
+- Updated README. [Maksim]
+
+- Merge branch 'develop' [Maksim Ekimovskii]
+
+- Added .travis.yml; updated Makefile. [Maksim Ekimovskii]
+
+- Merge branch 'develop' [Maksim Ekimovskii]
+
+- Fixed docs. [Maksim Ekimovskii]
+
+- Fixed tests. [Maksim Ekimovskii]
+
+- Added pypi_upload make command. [Maksim Ekimovskii]
+
+- Merge branch 'release/0.2.0' [Maksim Ekimovskii]
+
+- Fixed readme. [Maksim Ekimovskii]
+
+- Fixed readme. [Maksim Ekimovskii]
+
+- Fixed readme. [Maksim Ekimovskii]
+
+- Fixed readme. [Maksim Ekimovskii]
+
+- Fixed readme. [Maksim Ekimovskii]
+
+- Updated REAME, added notes. [Maksim Ekimovskii]
+
+- Merge branch 'feature/validators' into develop. [Maksim Ekimovskii]
+
+- Fix DictEmbeddedDocument type casting; Updated tests; Updated
+  documentation. [Maksim Ekimovskii]
+
+- Code cleanup. [Maksim Ekimovskii]
+
+- Updated validators, integrate it to field setter and document
+  initializator. [Maksim Ekimovskii]
+
+- Added validators; refactoring current code. [Maksim Ekimovskii]
+
+- Improve error logging for link_cls errors. [Maksim Ekimovskii]
+
+- Change version; Added documentation. [Maksim Ekimovskii]
+
+- Minor code refactoring; Added auto-create nested link_cls instance
+  from dict correct structur feature. [Maksim Ekimovskii]
+
+- Update setup.py. [Maksim Ekimovskii]
+
+- Improved get_instance method - filter not described fields; Added
+  tests. [Maksim Ekimovskii]
+
+- Update README.md. [Maksim]
+
+- Update README.md. [Maksim]
+
+- Correct README. [Maksim Ekimovskii]
+
+- Update README. [Maksim Ekimovskii]
+
+- Update README.md. [Maksim]
+
+- Fix conf.py. [Maksim Ekimovskii]
+
+- Merge branch 'master' of https://github.com/prawn-cake/simple-models.
+  [Maksim Ekimovskii]
+
+- Update index.rst. [Maksim]
+
+- Update index.rst. [Maksim]
+
+- Update index.rst. [Maksim]
+
+- Update index.rst. [Maksim Ekimovskii]
+
+- Merge branch 'master' of https://github.com/prawn-cake/simple-models.
+  [Maksim Ekimovskii]
+
+- Update index.rst. [Maksim]
+
+- Update docs. [Maksim Ekimovskii]
+
+- Delete docs build. [Maksim Ekimovskii]
+
+- Fixed docs. [Maksim Ekimovskii]
+
+- Updated docs. [Maksim Ekimovskii]
+
+- Added built docs. [Maksim Ekimovskii]
+
+- Merge branch 'master' of https://github.com/prawn-cake/simple-models.
+  [Maksim Ekimovskii]
+
+- Update README.md. [Maksim]
+
+- Rename root package name. [Maksim Ekimovskii]
+
+- Manual merge. [Maksim Ekimovskii]
+
+- Initial commit. [Maksim]
+
+- Create README.md. [Maksim]
+
+- Model fixes, added docs, added Makefile. [Maksim Ekimovskii]
+
+- Rewritten field storage logic to prevent memory leaks, store all
+  instance values in __dict__ [Maksim Ekimovskii]
+
+- Added docs. [Maksim Ekimovskii]
+
+- Addded docs and setup.py. [Maksim Ekimovskii]
+
+- Code refactoring. [Maksim Ekimovskii]
+
+- Added tests. [Maksim Ekimovskii]
+
+- Init commit. [Maksim Ekimovskii]
+
+

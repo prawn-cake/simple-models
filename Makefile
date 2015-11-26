@@ -1,8 +1,8 @@
 # System variables
-ENV_DIR=$(CURDIR)/.env
-PYTHON=$(ENV_DIR)/bin/python
-COVERAGE=$(ENV_DIR)/bin/coverage
-NOSE=$(ENV_DIR)/bin/nosetests
+VIRTUAL_ENV=$(CURDIR)/.env
+PYTHON=$(VIRTUAL_ENV)/bin/python
+COVERAGE=$(VIRTUAL_ENV)/bin/coverage
+NOSE=$(VIRTUAL_ENV)/bin/nosetests
 
 
 help:
@@ -22,8 +22,8 @@ clean:
 .PHONY: env
 env:
 # target: env - create virtualenv and install packages
-	@virtualenv $(ENV_DIR)
-	@$(ENV_DIR)/bin/pip install -r $(CURDIR)/requirements-test.txt
+	@virtualenv $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/pip install -r $(CURDIR)/requirements-test.txt
 
 
 # ===============
@@ -55,5 +55,5 @@ register:
 .PHONY: upload
 upload: clean
 # target: upload - Upload package on PyPi
-	@$(ENV_DIR)/bin/pip install wheel
+	@$(VIRTUAL_ENV)/bin/pip install wheel
 	@$(PYTHON) setup.py sdist bdist bdist_wheel upload -r pypi

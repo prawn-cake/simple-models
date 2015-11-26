@@ -21,3 +21,18 @@ def is_instance(class_or_type_or_tuple):
                 type(value), class_or_type_or_tuple))
         return value
     return wrapper
+
+
+def is_document(value):
+    """Check if value is a simplemodels.models.Document instance
+
+    :param value: some value
+    :return: bool
+    """
+    from simplemodels.models import Document
+
+    try:
+        # Handle an error with issubclass(lambda function)
+        return issubclass(value, Document)
+    except TypeError:
+        return False

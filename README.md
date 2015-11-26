@@ -6,7 +6,7 @@ simple-models
 
 Simple models - it is:
 
-* Define API messages as a models, in declarative way;
+* Define API messages as models, in declarative way;
 * Validate API messages with familiar form-like way;
 * Work with data flexibly with dict-like structures;
 
@@ -69,6 +69,30 @@ Fields
 * `BooleanField`    -- boolean field
 * `ListField`       -- list of items field *(new from v0.3.2)*
 
+
+CharField
+---------
+CharField is a field with default unicode validator (for Python 2), all input strings will be transformed to unicode by default
+
+Example (for python 2):
+
+    class User(Document):
+        name = CharField()
+        
+    >>> user = User(name='John')
+    >>> isinstance(user.name, unicode)
+    >>> True
+    
+To disable this behaviour **(not recommended)**, pass `is_unicode=False` field parameter:
+    
+    class User(Document):
+        name = CharField(is_unicode=False)
+    
+    >>> user = User(name='John')
+    >>> isinstance(user.name, unicode), isinstance(user.name, str) 
+    >>> False, True
+
+            
 ListField
 ---------
 Allows you to define list of items

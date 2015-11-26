@@ -411,3 +411,20 @@ class JsonValidationTest(TestCase):
         self.assertEqual(user.address.city, 'St.Petersburg')
         self.assertEqual(user.is_married, False)
         self.assertEqual(user.social_networks, ['facebook.com', 'google.com'])
+
+    def test_none_val_for_not_required_fields(self):
+        """Expect that if field is not required None value is accepted
+
+        """
+
+        class Post(Document):
+            owner_id = IntegerField(required=False)
+
+        post_1 = Post()
+        self.assertIsNone(post_1.owner_id)
+        json_data = json.dumps(post_1)
+        post_2 = Post(**json.loads(json_data))
+        self.assertIsNone(post_2.owner_id)
+
+        post_3 = Post(owner_id=None)
+        self.assertIsNone(post_3.owner_id)

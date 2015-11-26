@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from decimal import Decimal
 from unittest import TestCase
+import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError
@@ -78,6 +79,28 @@ class TypedFieldsTest(TestCase):
             user = User(username='a' * 21)
             self.assertIsNone(user)
             self.assertIn('Max length is exceeded', err)
+
+    def test_char_field_unicode(self):
+        class User(Document):
+            name = CharField(required=True)
+
+        user_1 = User(name='John')
+        user_2 = User(name=six.u('宝, 褒, 苞'))
+        if PYTHON_VERSION == 2:
+            self.assertIsInstance(user_1.name, unicode)
+            self.assertIsInstance(user_2.name, unicode)
+            self.assertEqual(user_2.name, six.u('宝, 褒, 苞'))
+        else:
+            self.assertIsInstance(user_1.name, str)
+
+    def test_char_field_unicode_false(self):
+        class User(Document):
+            name = CharField(is_unicode=False)
+
+        user = User(name='John')
+        if PYTHON_VERSION == 2:
+            self.assertFalse(isinstance(user.name, unicode))
+        self.assertIsInstance(user.name, str)
 
     def test_doc(self):
         instance = self.model(doc_field={'int_field': '1'})

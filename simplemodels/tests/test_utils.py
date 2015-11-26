@@ -4,7 +4,7 @@ from datetime import datetime
 from simplemodels.exceptions import ValidationError
 from simplemodels.fields import SimpleField
 from simplemodels.models import Document
-from simplemodels.validators import is_instance
+from simplemodels.utils import is_instance
 
 
 class ValidatorsTest(unittest.TestCase):

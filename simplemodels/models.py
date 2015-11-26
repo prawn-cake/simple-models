@@ -81,8 +81,7 @@ class Document(AttributeDict):
         :param kwargs: init parameters
         :return: :raise RequiredValidationError:
         """
-        cls = self.__class__
-        required_fields_errors = []
+        errors_list = []
 
         # Do some validations
         for field_name, field_obj in self._fields.items():
@@ -94,8 +93,8 @@ class Document(AttributeDict):
                 default_val() if callable(default_val) else default_val)
 
             # Validate required fields
-            cls._validate_require(
-                field_name, field_val, required_fields_errors)
+            self._validate_required(
+                name=field_name, value=field_val, errors=errors_list)
 
             # Build model structure
             if field_name in kwargs:
@@ -106,13 +105,13 @@ class Document(AttributeDict):
             else:
                 kwargs[field_name] = field_val
 
-        if required_fields_errors:
-            raise ValidationRequiredError(str(required_fields_errors))
+        if errors_list:
+            raise ValidationRequiredError(str(errors_list))
 
         return kwargs
 
     @classmethod
-    def _validate_require(cls, name, value, errors):
+    def _validate_required(cls, name, value, errors):
         if name in getattr(cls, '_required_fields', []):
             if value is None or value == '':
                 errors.append("Field '{}' is required for {}".format(
