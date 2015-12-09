@@ -64,7 +64,9 @@ class Document(AttributeDict):
 
     """ Main class to represent structured dict-like document """
 
+    # TODO: implement some kind of class Meta:
     ALLOW_EXTRA_FIELDS = False
+    IGNORE_NONE_ON_INIT = False
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
@@ -95,6 +97,10 @@ class Document(AttributeDict):
             # Validate required fields
             self._validate_required(
                 name=field_name, value=field_val, errors=errors_list)
+
+            # Ignore None field values from the initial structure
+            if self.IGNORE_NONE_ON_INIT and field_val is None:
+                continue
 
             # Build model structure
             if field_name in kwargs:

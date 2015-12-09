@@ -6,7 +6,7 @@ import six
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
-    BooleanField, CharField, DocumentField, ListField
+    BooleanField, CharField, DocumentField, ListField, SimpleField
 from simplemodels.models import DictEmbeddedDocument, Document
 
 
@@ -158,3 +158,19 @@ class TypedFieldsTest(TestCase):
         self.assertEqual(p1.tags, ['news', 'sport'])
         p2 = Post()
         self.assertEqual(p2.tags, ['news'])
+
+    def test_documents_list_field(self):
+        class User(Document):
+            name = CharField()
+
+        class Post(Document):
+            text = CharField()
+            viewed = SimpleField(
+                validators=[lambda items: [User(**item) for item in items]])
+
+        post = Post(text='abc', viewed=[{'name': 'John'}])
+        self.assertIsInstance(post, Post)
+        self.assertIsInstance(post.viewed, list)
+
+        for user in post.viewed:
+            self.assertIsInstance(user, User)

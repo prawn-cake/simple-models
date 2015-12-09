@@ -239,14 +239,14 @@ class ListField(SimpleField):
         :param err: Exception class
         :return: :raise err:
         """
-        values_list = value
-        if not isinstance(values_list, list):
-            raise err('Wrong values type {}, must be list'.format(
-                type(values_list)))
+        items_list = value
+        if not isinstance(items_list, list):
+            raise err('Wrong values type {}, must be a list'.format(
+                type(items_list)))
 
         errors = []
-        for item in values_list:
-            types = tuple(self._item_types)
+        types = tuple(self._item_types)
+        for item in items_list:
             if not isinstance(item, types):
                 # Unicode hook for python 2, accept unicode type as a str value
                 if PYTHON_VERSION == 2 and str in types:
@@ -255,6 +255,7 @@ class ListField(SimpleField):
                 errors.append(
                     'List value {} has wrong type ({}), must be one of '
                     '{}'.format(item, type(item).__name__, self._item_types))
+
         if errors:
             raise err('\n'.join(errors))
-        return values_list
+        return items_list

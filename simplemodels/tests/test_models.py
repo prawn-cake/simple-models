@@ -284,6 +284,24 @@ class DocumentTest(TestCase):
         )
         self.assertEqual(msg.level, 'DEBUG')
 
+    def test_ignore_none_on_init_attribute(self):
+        class Message(Document):
+            text = CharField(max_length=500)
+
+        msg = Message()
+        self.assertEqual(msg, {'text': None})
+
+        class MessageWithoutNone(Document):
+            IGNORE_NONE_ON_INIT = True
+
+            text = CharField(max_length=500)
+
+        msg = MessageWithoutNone()
+        self.assertEqual(msg, {})
+
+        msg.text = None
+        self.assertEqual(msg, {'text': None})
+
     def test_choices_option(self):
         class LogMessage(Document):
             level = CharField(choices=['INFO', 'DEBUG', 'ERROR'])
