@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+import six
 from simplemodels.exceptions import ValidationRequiredError, \
     ImmutableDocumentError
 from simplemodels.fields import SimpleField, DocumentField
-import six
+
 
 __all__ = ['Document', 'ImmutableDocument']
 
@@ -56,7 +57,8 @@ class DocumentMeta(type):
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)
 
-        return super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
+        cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
+        return cls
 
 
 @six.add_metaclass(DocumentMeta)
@@ -70,12 +72,10 @@ class Document(AttributeDict):
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
+
+        # dict init
         prepared_fields = self._prepare_fields(**kwargs)
         super(Document, self).__init__(**prepared_fields)
-
-        # Initialize prepared field values to self.__dict__
-        for name, value in prepared_fields.items():
-            self.__dict__[name] = value
 
     def _prepare_fields(self, **kwargs):
         """Do field validations and set defaults
@@ -102,17 +102,20 @@ class Document(AttributeDict):
             if self.IGNORE_NONE_ON_INIT and field_val is None:
                 continue
 
+            if errors_list:
+                raise ValidationRequiredError(str(errors_list))
+
             # Build model structure
             if field_name in kwargs:
-                kwargs[field_name] = field_obj.validate(field_val)
+                field_obj.__set_value__(self, field_val)
+                kwargs[field_name] = field_obj.__get__(self, field_name)
             elif issubclass(type(field_obj), DocumentField):
                 # build empty nested document
-                kwargs[field_name] = field_obj.validate({})
+                field_obj.__set_value__(self, {})
+                kwargs[field_name] = field_obj.__get__(self, field_name)
             else:
-                kwargs[field_name] = field_val
-
-        if errors_list:
-            raise ValidationRequiredError(str(errors_list))
+                field_obj.__set_value__(self, field_val)
+                kwargs[field_name] = field_obj.__get__(self, field_name)
 
         return kwargs
 
@@ -143,6 +146,3 @@ class ImmutableDocument(Document):
 
     def __setitem__(self, key, value):
         return setattr(self, key, value)
-
-
-DictEmbeddedDocument = Document
