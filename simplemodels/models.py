@@ -43,6 +43,14 @@ class DocumentMeta(type):
         _fields = {}
         _required_fields = []
 
+        for p in parents:
+            parent_fields = getattr(p, '_fields', {})
+            _fields.update(parent_fields)
+
+            parent_required_fields = getattr(p, '_required_fields', [])
+            _required_fields = _required_fields + list(parent_required_fields)
+
+
         # Inspect subclass to save SimpleFields and require field names
         for field_name, obj in dct.items():
             if issubclass(type(obj), SimpleField):
@@ -56,6 +64,7 @@ class DocumentMeta(type):
 
         dct['_fields'] = _fields
         dct['_required_fields'] = tuple(_required_fields)
+        dct['_parents'] = tuple(parents)
 
         cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
         return cls

@@ -333,13 +333,22 @@ class DocumentTest(TestCase):
         self.assertEqual(p2.tags, ['news'])
 
     def test_inheritance(self):
+        a = 1
+
         class Message(Document):
             text = CharField(required=True)
 
         class UserMessage(Message):
             user_id = IntegerField()
 
-        msg = Message(text='user message text')
+            def __init__(self, **kwargs):
+                super(UserMessage, self).__init__(**kwargs)
+
+        msg = UserMessage()
+        self.assertIn('text', msg)
+        self.assertIn('user_id', msg)
+
+        msg = UserMessage(text='user message text')
         self.assertEqual(msg.user_id, None)
         self.assertEqual(msg.text, 'user message text')
 
