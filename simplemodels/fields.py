@@ -7,7 +7,7 @@ import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
-    ImmutableFieldError
+    ImmutableFieldError, FieldRequiredError
 from simplemodels.utils import is_document
 
 
@@ -79,17 +79,13 @@ class SimpleField(object):
     def name(self):
         return self._verbose_name or self._name
 
-    def validate(self, value, err=ValidationError):
-        """Helper method to validate field.
+    def _run_validators(self, value, err=ValidationError):
+        """Run validators chain and return validated (cleaned) value
 
-        :param value: value to validate
-        :param err: simplemodels.exceptions.ValidationError class
-        :return: value
+        :param value: field value
+        :param err: error to raise in case of validation errors
+        :return: value :raise err:
         """
-
-        if not self.validators:
-            return value
-
         for validator in self.validators:
             try:
                 if is_document(validator):
@@ -114,7 +110,41 @@ class SimpleField(object):
 
                 raise err("Wrong value '{!r}' for the field `{!r}`. "
                           "{}".format(value, self, self.error_text))
+        return value
 
+    def _validate_required(self, value):
+        if self.required:
+            if value is None or value == '':
+                raise FieldRequiredError('Field %s is required' % self.name)
+
+    def _pre_validate(self, value, err=ValidationError):
+        """One of the validation chain method.
+
+        :param value:
+        :param err:
+        :return:
+        """
+        return value
+
+    def validate(self, value, err=ValidationError):
+        """Helper method to validate field.
+
+        :param value: value to validate
+        :param err: simplemodels.exceptions.ValidationError class
+        :return: validated value
+        """
+        # Validate required
+        self._validate_required(value=value)
+
+        # Skip validation if no validators
+        if not self.validators:
+            return value
+
+        # Run validators chain
+        value = self._pre_validate(value=value, err=err)
+        value = self._run_validators(value=value, err=err)
+
+        # Check choices if passed
         if self.choices:
             if value not in self.choices:
                 raise ValueError(
@@ -266,13 +296,14 @@ class ListField(SimpleField):
 
         super(ListField, self).__init__(**kwargs)
 
-    def validate(self, value, err=ValidationError):
+    def _pre_validate(self, value, err=ValidationError):
         """Custom list field validate method
 
         :param value: values list, save value name for interface compatibility
         :param err: Exception class
         :return: :raise err:
         """
+
         items_list = value
         if not isinstance(items_list, list):
             raise err('Wrong values type {}, must be a list'.format(

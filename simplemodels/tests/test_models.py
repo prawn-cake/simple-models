@@ -6,7 +6,7 @@ import time
 
 import six
 
-from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
+from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     ValidationDefaultError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
@@ -45,7 +45,7 @@ class Address(Document):
 
 class Person(Document):
     name = SimpleField(required=True)
-    address = SimpleField(validatos=[Address])
+    address = SimpleField(validators=[Address])
 
 
 # End of test model classes
@@ -86,7 +86,6 @@ class DocumentTest(TestCase):
 
         self.assertIsInstance(bid, dict)
         self.assertIsInstance(bid._fields, dict)
-        self.assertIsInstance(bid._required_fields, tuple)
         self.assertEqual(
             sorted(bid._fields), sorted(('xsi_type', 'contentBid'))
         )
@@ -109,15 +108,19 @@ class DocumentTest(TestCase):
         self.assertEqual(a.l, [])
 
     def test_simple_field_required(self):
-        class TestDictDocument(Document):
+        class TestDocument(Document):
             xsi_type = SimpleField(required=True)
 
-        self.assertRaises(ValidationRequiredError, TestDictDocument)
+        with self.assertRaises(FieldRequiredError) as err:
+            doc = TestDocument()
+            self.assertIsNone(doc)
+            self.assertIn('Field xsi_type is required', str(err))
+
         self.assertRaises(
-            ValidationRequiredError, TestDictDocument, xsi_type='')
+            FieldRequiredError, TestDocument, xsi_type='')
         self.assertRaises(
-            ValidationRequiredError, TestDictDocument, xsi_type=None)
-        self.assertTrue(TestDictDocument(xsi_type='html'))
+            FieldRequiredError, TestDocument, xsi_type=None)
+        self.assertTrue(TestDocument(xsi_type='html'))
 
     def test_default_values_with_several_instances(self):
         td = MailboxItem()
@@ -261,7 +264,7 @@ class DocumentTest(TestCase):
         data = {"Interest Rate": "1.01"}
         my_model = RateModel(**data)
         self.assertEqual(my_model['Interest Rate'], 1.01)
-        self.assertRaises(ValidationRequiredError, RateModel)
+        self.assertRaises(FieldRequiredError, RateModel)
 
     def test_allow_extra_fields_attribute(self):
         """ Create document with ALLOW_EXTRA_FIELDS = True and expect that all
@@ -333,18 +336,13 @@ class DocumentTest(TestCase):
         self.assertEqual(p2.tags, ['news'])
 
     def test_inheritance(self):
-        a = 1
-
         class Message(Document):
             text = CharField(required=True)
 
         class UserMessage(Message):
             user_id = IntegerField()
 
-            def __init__(self, **kwargs):
-                super(UserMessage, self).__init__(**kwargs)
-
-        msg = UserMessage()
+        msg = UserMessage(text='message text')
         self.assertIn('text', msg)
         self.assertIn('user_id', msg)
 
@@ -355,8 +353,9 @@ class DocumentTest(TestCase):
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
-        street = 'Pagoda street'
-        self.assertRaises(ValidationError, Person, address=street)
+        with self.assertRaises(ValidationError):
+            p = Person(address='Pagoda street')
+            self.assertIsNone(p)
 
     def test_validation_with_default_values(self):
         # Expect an error on class initialization step

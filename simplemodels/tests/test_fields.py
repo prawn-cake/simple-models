@@ -4,7 +4,8 @@ from unittest import TestCase
 import six
 
 from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import ValidationError, ImmutableFieldError
+from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
+    FieldRequiredError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
     BooleanField, CharField, DocumentField, ListField, SimpleField
 from simplemodels.models import Document
@@ -186,3 +187,54 @@ class TypedFieldsTest(TestCase):
 
         for user in post.viewed:
             self.assertIsInstance(user, User)
+
+
+class FieldsAttributesTest(TestCase):
+    def setUp(self):
+        # class User(Document):
+        #     name = CharField()
+
+        # fields cls, test value
+        self.fields = [
+            (SimpleField, ['my_field', 2, {'x': 1}, {1, 1, 2}], {}),
+            (CharField, 'my_field', {}),
+            (IntegerField, 101, {}),
+            (FloatField, 999.998, {}),
+            (BooleanField, True, {}),
+            (ListField, ['a', 1, 2.0], {'item_types': [str, int, float]}),
+            (DecimalField, Decimal('47'), {}),
+            # (DocumentField, {'name': 'Maks'}, {'model': User})
+        ]
+
+    def test_required(self):
+        for field_cls, test_value, kwargs in self.fields:
+
+            class MyDocument(Document):
+                test_field = field_cls(required=True, **kwargs)
+
+            # Test correct document creation
+            doc = MyDocument(test_field=test_value)
+            self.assertIsInstance(doc, MyDocument)
+            self.assertEqual(doc.test_field, test_value)
+
+            # Test required error case
+            with self.assertRaises(FieldRequiredError) as err:
+                doc = MyDocument()
+                self.assertIsNone(doc)
+                self.assertIn('Field test_field is required', str(err))
+
+    def test_default(self):
+        for field_cls, test_value, kwargs in self.fields:
+            class MyDocument(Document):
+                test_field = field_cls(default=test_value, **kwargs)
+
+            doc = MyDocument()
+            self.assertEqual(doc.test_field, test_value)
+
+    def test_choices(self):
+        for field_cls, test_value, kwargs in self.fields:
+            class MyDocument(Document):
+                test_field = field_cls(default=test_value, **kwargs)
+
+            doc = MyDocument()
+            self.assertEqual(doc.test_field, test_value)

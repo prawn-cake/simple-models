@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import six
-from simplemodels.exceptions import ValidationRequiredError, \
-    ImmutableDocumentError
+from simplemodels.exceptions import ImmutableDocumentError
 from simplemodels.fields import SimpleField, DocumentField
 
 
@@ -41,15 +40,10 @@ class DocumentMeta(type):
         """
 
         _fields = {}
-        _required_fields = []
 
-        for p in parents:
-            parent_fields = getattr(p, '_fields', {})
+        for parent_cls in parents:
+            parent_fields = getattr(parent_cls, '_fields', {})
             _fields.update(parent_fields)
-
-            parent_required_fields = getattr(p, '_required_fields', [])
-            _required_fields = _required_fields + list(parent_required_fields)
-
 
         # Inspect subclass to save SimpleFields and require field names
         for field_name, obj in dct.items():
@@ -57,13 +51,9 @@ class DocumentMeta(type):
                 # set SimpleField text name as a private `_name` attribute
                 obj._name = field_name
                 obj._holder_name = name  # class holder name
-
                 _fields[obj.name] = obj
-                if obj.required:
-                    _required_fields.append(obj.name)
 
         dct['_fields'] = _fields
-        dct['_required_fields'] = tuple(_required_fields)
         dct['_parents'] = tuple(parents)
 
         cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
@@ -92,7 +82,6 @@ class Document(AttributeDict):
         :param kwargs: init parameters
         :return: :raise RequiredValidationError:
         """
-        errors_list = []
 
         # Do some validations
         for field_name, field_obj in self._fields.items():
@@ -103,13 +92,6 @@ class Document(AttributeDict):
             if field_val is None:
                 field_val = default_val() if callable(default_val) \
                     else default_val
-
-            # Validate required fields
-            self._validate_required(
-                name=field_name, value=field_val, errors=errors_list)
-
-            if errors_list:
-                raise ValidationRequiredError(str(errors_list))
 
             # Build model structure
             if field_name in kwargs:
@@ -127,14 +109,6 @@ class Document(AttributeDict):
                     kwargs[field_name] = field_obj.__get__(self, field_name)
 
         return kwargs
-
-    @classmethod
-    def _validate_required(cls, name, value, errors):
-        if name in getattr(cls, '_required_fields', []):
-            if value is None or value == '':
-                errors.append("Field '{}' is required for {}".format(
-                    name, cls.__name__))
-        return True
 
     @classmethod
     def _clean_kwargs(cls, kwargs):
