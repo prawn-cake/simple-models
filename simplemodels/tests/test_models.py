@@ -284,23 +284,25 @@ class DocumentTest(TestCase):
         )
         self.assertEqual(msg.level, 'DEBUG')
 
-    def test_ignore_none_on_init_attribute(self):
+    def test_ignore_omit_not_passed_fields_attribute(self):
         class Message(Document):
-            text = CharField(max_length=500)
+            text = CharField(max_length=120)
 
         msg = Message()
-        self.assertEqual(msg, {'text': None})
+        self.assertEqual(msg, {'text': ''})
 
         class MessageWithoutNone(Document):
-            IGNORE_NONE_ON_INIT = True
+            OMIT_NOT_PASSED_FIELDS = True
 
-            text = CharField(max_length=500)
+            text = CharField()
 
         msg = MessageWithoutNone()
         self.assertEqual(msg, {})
+        self.assertEqual(msg.text, None)
 
         msg.text = None
-        self.assertEqual(msg, {'text': None})
+        self.assertEqual(msg, {'text': ''})
+        self.assertEqual(msg.text, '')
 
     def test_choices_option(self):
         class LogMessage(Document):

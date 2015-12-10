@@ -99,6 +99,10 @@ class SimpleField(object):
                 else:
                     value = validator(value)
 
+                if value is None:
+                    raise ValidationError(
+                        'validator {!r} returned None value'.format(validator))
+
             # InvalidOperation for decimal, TypeError
             except InvalidOperation:
                 raise err("Invalid decimal operation for '{!r}' for the field "
@@ -144,7 +148,7 @@ class SimpleField(object):
         instance.__dict__[self.name] = value
 
     def __set__(self, instance, value):
-        print('Set %r -> %s' % (instance, value))
+        # print('Set %r -> %s' % (instance, value))
         if self._immutable:
             raise ImmutableFieldError('{!r} field is immutable'.format(self))
         self.__set_value__(instance, value)
@@ -188,9 +192,16 @@ class CharField(SimpleField):
 
         # Add max length validator
         if max_length:
+            def validate_max_length(value):
+                if len(value) > max_length:
+                    raise ValidationError(
+                        'Max length is exceeded ({} < {}) for the '
+                        'field {!r}'.format(len(value), self.max_length, self))
+                return value
+
             self.max_length = max_length
             self._add_default_validator(
-                validator=self._validate_max_length,
+                validator=validate_max_length,
                 kwargs=kwargs)
 
         super(CharField, self).__init__(**kwargs)
@@ -203,12 +214,6 @@ class CharField(SimpleField):
         if value is None:
             value = ''
         super(CharField, self).__set_value__(instance, value)
-
-    def _validate_max_length(self, value):
-        if len(value) > self.max_length:
-            raise ValidationError(
-                'Max length is exceeded ({} < {}) for the field {!r}'.format(
-                    len(value), self.max_length, self))
 
 
 class BooleanField(SimpleField):
