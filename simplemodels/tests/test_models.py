@@ -332,6 +332,17 @@ class DocumentTest(TestCase):
         p2 = Post()
         self.assertEqual(p2.tags, ['news'])
 
+    def test_inheritance(self):
+        class Message(Document):
+            text = CharField(required=True)
+
+        class UserMessage(Message):
+            user_id = IntegerField()
+
+        msg = Message(text='user message text')
+        self.assertEqual(msg.user_id, None)
+        self.assertEqual(msg.text, 'user message text')
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
