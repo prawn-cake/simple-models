@@ -17,9 +17,10 @@ __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
 
 class SimpleField(object):
 
-    """Class-field with descriptor for DictEmbeddedDocument"""
+    """Class-field with descriptor for Document"""
 
     MUTABLE_TYPES = (list, dict, set, bytearray)
+    CHOICES_TYPES = (tuple, list, set)
 
     def __init__(self, default=None, required=False, choices=None, name=None,
                  validators=None, error_text='', immutable=False, **kwargs):
@@ -40,7 +41,7 @@ class SimpleField(object):
         self._verbose_name = kwargs.get('verbose_name', name)
 
         self.required = required
-        if choices and not isinstance(choices, (tuple, list, set)):
+        if choices and not isinstance(choices, SimpleField.CHOICES_TYPES):
             raise ValueError(
                 'Wrong choices data type {}, '
                 'must be (tuple, list, set)'.format(type(choices)))
@@ -62,7 +63,7 @@ class SimpleField(object):
 
         :param value: default value
         """
-        if isinstance(value, self.MUTABLE_TYPES):
+        if isinstance(value, SimpleField.MUTABLE_TYPES):
             self.default = lambda: copy.deepcopy(value)
         else:
             self.default = value
@@ -132,11 +133,21 @@ class SimpleField(object):
     def __get__(self, instance, owner):
         return instance.__dict__.get(self.name, self.default)
 
-    def __set__(self, instance, value):
-        if self._immutable:
-            raise ImmutableFieldError('{!r} field is immutable'.format(self))
+    def __set_value__(self, instance, value):
+        """Common value setter to use it from __set__ descriptor and from
+        simplemodels.models.Document init
+
+        :param instance: instance object
+        :param value: value
+        """
         value = self.validate(value)
         instance.__dict__[self.name] = value
+
+    def __set__(self, instance, value):
+        print('Set %r -> %s' % (instance, value))
+        if self._immutable:
+            raise ImmutableFieldError('{!r} field is immutable'.format(self))
+        self.__set_value__(instance, value)
 
     def __repr__(self):
         if self._holder_name and self.name:
@@ -184,6 +195,15 @@ class CharField(SimpleField):
 
         super(CharField, self).__init__(**kwargs)
 
+    def __set_value__(self, instance, value):
+        """Override method. Forbid to store None for CharField, because it
+        result to conflicts like str(None) --> 'None'
+
+        """
+        if value is None:
+            value = ''
+        super(CharField, self).__set_value__(instance, value)
+
     def _validate_max_length(self, value):
         if len(value) > self.max_length:
             raise ValidationError(
@@ -198,7 +218,16 @@ class BooleanField(SimpleField):
 
 
 class DocumentField(SimpleField):
-    """Embedded document field"""
+    """Embedded document field.
+
+    Usage:
+
+        class Website(Document):
+            url = CharField()
+
+        class User(Document)
+            website = DocumentField(model=Website)
+    """
 
     def __init__(self, model, **kwargs):
         self._add_default_validator(model, kwargs)

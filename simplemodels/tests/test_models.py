@@ -185,7 +185,7 @@ class DocumentTest(TestCase):
 
     def test_field_type(self):
         class PostAddress(Document):
-            street = SimpleField(validators=[str])
+            street = CharField()
 
         class User(Document):
             id = SimpleField(validators=[int])

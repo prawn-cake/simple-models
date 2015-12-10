@@ -7,12 +7,12 @@ from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
     BooleanField, CharField, DocumentField, ListField, SimpleField
-from simplemodels.models import DictEmbeddedDocument, Document
+from simplemodels.models import Document
 
 
 class TypedFieldsTest(TestCase):
     def setUp(self):
-        class SubDocument(DictEmbeddedDocument):
+        class SubDocument(Document):
             int_field = IntegerField()
 
         self.subdocument = SubDocument
@@ -101,6 +101,18 @@ class TypedFieldsTest(TestCase):
         if PYTHON_VERSION == 2:
             self.assertFalse(isinstance(user.name, unicode))
         self.assertIsInstance(user.name, str)
+
+    def test_char_field_none(self):
+        class User(Document):
+            name = CharField()
+
+        user_1 = User(name=None)
+        self.assertEqual(user_1.name, '')
+
+        user_2 = User()
+        self.assertEqual(user_2.name, '')
+        user_2.name = None
+        self.assertEqual(user_2.name, '')
 
     def test_doc(self):
         instance = self.model(doc_field={'int_field': '1'})
