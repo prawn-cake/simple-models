@@ -24,7 +24,7 @@ class AttributeDict(dict):
 
     def __setattr__(self, key, value):
         super(AttributeDict, self).__setattr__(key, value)
-        self[key] = value
+        self[key] = super(AttributeDict, self).__getattribute__(key)
 
 
 class DocumentMeta(type):
@@ -68,7 +68,7 @@ class Document(AttributeDict):
 
     # TODO: implement some kind of class Meta:
     ALLOW_EXTRA_FIELDS = False
-    IGNORE_NONE_ON_INIT = False
+    OMIT_NOT_PASSED_FIELDS = False
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
@@ -90,23 +90,21 @@ class Document(AttributeDict):
 
             # Get field value or set default
             default_val = getattr(field_obj, 'default')
-            field_val = kwargs.get(
-                field_name,
-                default_val() if callable(default_val) else default_val)
+            field_val = kwargs.get(field_name)
+            if field_val is None:
+                field_val = default_val() if callable(default_val) \
+                    else default_val
 
             # Validate required fields
             self._validate_required(
                 name=field_name, value=field_val, errors=errors_list)
-
-            # Ignore None field values from the initial structure
-            if self.IGNORE_NONE_ON_INIT and field_val is None:
-                continue
 
             if errors_list:
                 raise ValidationRequiredError(str(errors_list))
 
             # Build model structure
             if field_name in kwargs:
+                # set presented field
                 field_obj.__set_value__(self, field_val)
                 kwargs[field_name] = field_obj.__get__(self, field_name)
             elif issubclass(type(field_obj), DocumentField):
@@ -114,8 +112,10 @@ class Document(AttributeDict):
                 field_obj.__set_value__(self, {})
                 kwargs[field_name] = field_obj.__get__(self, field_name)
             else:
-                field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = field_obj.__get__(self, field_name)
+                # field is not presented in the passed parameters
+                if not self.OMIT_NOT_PASSED_FIELDS:
+                    field_obj.__set_value__(self, field_val)
+                    kwargs[field_name] = field_obj.__get__(self, field_name)
 
         return kwargs
 
@@ -131,9 +131,11 @@ class Document(AttributeDict):
     def _clean_kwargs(cls, kwargs):
         fields = getattr(cls, '_fields', {})
         if cls.ALLOW_EXTRA_FIELDS:  # put everything extra in the document
-            return {k: v for k, v in kwargs.items()}
+            kwargs = {k: v for k, v in kwargs.items()}
         else:
-            return {k: v for k, v in kwargs.items() if k in fields}
+            kwargs = {k: v for k, v in kwargs.items() if k in fields}
+
+        return kwargs
 
 
 class ImmutableDocument(Document):
