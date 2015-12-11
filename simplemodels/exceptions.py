@@ -4,7 +4,7 @@ import six
 
 __all__ = [
     'ValidationError',
-    'ValidationRequiredError',
+    'FieldRequiredError',
     'ValidationTypeIsNotSupported'
 ]
 
@@ -16,7 +16,7 @@ class ValidationError(Exception):
         return six.u(self.message)
 
 
-class ValidationRequiredError(ValidationError):
+class FieldRequiredError(ValidationError):
     """ Raised when required field is not found """
 
     pass

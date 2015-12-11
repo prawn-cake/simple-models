@@ -4,51 +4,11 @@ from unittest import TestCase
 from datetime import datetime
 import time
 
-import six
-
-from simplemodels.exceptions import ValidationError, ValidationRequiredError, \
+from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     ValidationDefaultError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
-
-# Test model classes
-
-
-class MailboxItem(Document):
-    subject = SimpleField(default='')
-    body = SimpleField(default='')
-    type = SimpleField(choices=["SUGGESTION", "MAIL"],
-                       max_length=10,
-                       default='MAIL')
-    # received_at = SimpleField(default=timezone.now)
-    received_at = SimpleField(default='')
-    is_read = SimpleField(default=False)
-
-    def __init__(self, **kwargs):
-        super(MailboxItem, self).__init__(**kwargs)
-        if 'received_at' not in kwargs and not self.received_at:
-            self.received_at = datetime.now()
-
-    def __repr__(self):
-        return six.u("<{}({}): {}>".format(
-            self.__class__.__name__, self.type, self.subject))
-
-    def __unicode__(self):
-        return six.u("<{}({}): {}>".format(
-            self.__class__.__name__, self.type, self.subject))
-
-
-class Address(Document):
-    street = SimpleField()
-
-
-class Person(Document):
-    name = SimpleField(required=True)
-    address = SimpleField(validatos=[Address])
-
-
-# End of test model classes
 
 
 class AttributeDictTest(TestCase):
@@ -79,14 +39,12 @@ class DocumentTest(TestCase):
 
         class BidEmbedded(Document):
             xsi_type = CharField(default='BidEmbedded')
-            # xsi_type = fields.StringField(default='BidEmbedded')
             contentBid = DocumentField(model=Money)
 
         bid = BidEmbedded()
 
         self.assertIsInstance(bid, dict)
         self.assertIsInstance(bid._fields, dict)
-        self.assertIsInstance(bid._required_fields, tuple)
         self.assertEqual(
             sorted(bid._fields), sorted(('xsi_type', 'contentBid'))
         )
@@ -109,17 +67,23 @@ class DocumentTest(TestCase):
         self.assertEqual(a.l, [])
 
     def test_simple_field_required(self):
-        class TestDictDocument(Document):
+        class TestDocument(Document):
             xsi_type = SimpleField(required=True)
 
-        self.assertRaises(ValidationRequiredError, TestDictDocument)
+        with self.assertRaises(FieldRequiredError) as err:
+            doc = TestDocument()
+            self.assertIsNone(doc)
+            self.assertIn('Field xsi_type is required', str(err))
+
         self.assertRaises(
-            ValidationRequiredError, TestDictDocument, xsi_type='')
+            FieldRequiredError, TestDocument, xsi_type='')
         self.assertRaises(
-            ValidationRequiredError, TestDictDocument, xsi_type=None)
-        self.assertTrue(TestDictDocument(xsi_type='html'))
+            FieldRequiredError, TestDocument, xsi_type=None)
+        self.assertTrue(TestDocument(xsi_type='html'))
 
     def test_default_values_with_several_instances(self):
+        from simplemodels.tests.stub_models import MailboxItem
+
         td = MailboxItem()
         td_2 = MailboxItem(is_read=True)
 
@@ -152,6 +116,8 @@ class DocumentTest(TestCase):
             self.assertIsNone(msg)
 
     def test_getting_classname(self):
+        from simplemodels.tests.stub_models import Address
+
         self.assertEqual(Address.__name__, 'Address')
 
     def test_property_getter(self):
@@ -261,7 +227,7 @@ class DocumentTest(TestCase):
         data = {"Interest Rate": "1.01"}
         my_model = RateModel(**data)
         self.assertEqual(my_model['Interest Rate'], 1.01)
-        self.assertRaises(ValidationRequiredError, RateModel)
+        self.assertRaises(FieldRequiredError, RateModel)
 
     def test_allow_extra_fields_attribute(self):
         """ Create document with ALLOW_EXTRA_FIELDS = True and expect that all
@@ -284,7 +250,7 @@ class DocumentTest(TestCase):
         )
         self.assertEqual(msg.level, 'DEBUG')
 
-    def test_ignore_omit_not_passed_fields_attribute(self):
+    def test_omit_not_passed_fields_attribute(self):
         class Message(Document):
             text = CharField(max_length=120)
 
@@ -303,6 +269,17 @@ class DocumentTest(TestCase):
         msg.text = None
         self.assertEqual(msg, {'text': ''})
         self.assertEqual(msg.text, '')
+
+    def test_omit_not_passed_fields_attribute_with_defaults(self):
+        class User(Document):
+            OMIT_NOT_PASSED_FIELDS = True
+
+            name = CharField(max_length=120)
+            role = CharField(default='admin')
+
+        user = User()
+        self.assertEqual(user, {'role': 'admin'})
+        self.assertEqual(user.role, 'admin')
 
     def test_choices_option(self):
         class LogMessage(Document):
@@ -332,11 +309,71 @@ class DocumentTest(TestCase):
         p2 = Post()
         self.assertEqual(p2.tags, ['news'])
 
+    def test_inheritance(self):
+        class Message(Document):
+            text = CharField(required=True)
+
+        class UserMessage(Message):
+            user_id = IntegerField()
+
+        msg = UserMessage(text='message text')
+        self.assertIn('text', msg)
+        self.assertIn('user_id', msg)
+
+        msg = UserMessage(text='user message text')
+        self.assertEqual(msg.user_id, None)
+        self.assertEqual(msg.text, 'user message text')
+
+    def test_multiple_inheritance(self):
+        class AuthMixin(Document):
+            username = CharField(required=True)
+
+        class UserMixin(Document):
+            id = IntegerField()
+
+        class User(AuthMixin, UserMixin):
+            full_name = CharField()
+
+        user = User(username='John')
+        self.assertEqual(user.username, 'John')
+        self.assertEqual(user.id, None)
+        self.assertEqual(user.full_name, '')
+
+        class BankAccountMixin(Document):
+            account_id = IntegerField()
+            bank_name = CharField(default='Golden sink')
+
+        class MyUser(User, BankAccountMixin):
+            id = FloatField(required=True)
+
+        # expect that inherited username field is still required
+        with self.assertRaises(FieldRequiredError) as err:
+            my_user = MyUser(id=1)
+            self.assertIsNone(my_user)
+            self.assertIn('Field username is required', str(err))
+
+        # Check that id value was overridden and coerced to float
+        my_user = MyUser(id=1, username='Max')
+        self.assertIsInstance(my_user.id, float)
+
+        # Check fields existence
+        self.assertEqual(my_user.full_name, '')
+        self.assertEqual(my_user.account_id, None)
+        self.assertEqual(my_user.bank_name, 'Golden sink')
+        self.assertEqual(my_user, {'id': 1.0,
+                                   'full_name': '',
+                                   'username': 'Max',
+                                   'account_id': None,
+                                   'bank_name': 'Golden sink'})
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
-        street = 'Pagoda street'
-        self.assertRaises(ValidationError, Person, address=street)
+        from simplemodels.tests.stub_models import Person
+
+        with self.assertRaises(ValidationError):
+            p = Person(address='Pagoda street')
+            self.assertIsNone(p)
 
     def test_validation_with_default_values(self):
         # Expect an error on class initialization step
