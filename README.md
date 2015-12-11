@@ -3,6 +3,7 @@ simple-models
 [![Build Status](https://travis-ci.org/prawn-cake/simple-models.svg?branch=master)](https://travis-ci.org/prawn-cake/simple-models)
 [![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg?branch=master&service=github)](https://coveralls.io/github/prawn-cake/simple-models?branch=master)
+![PythonVersions](https://www.dropbox.com/s/ck0nc28ttga2pw9/python-2.7_3.4-blue.svg?dl=1)
 
 Simple models - it is:
 
@@ -68,6 +69,7 @@ Fields
 * `CharField`       -- char field (python2/3 portable)
 * `BooleanField`    -- boolean field
 * `ListField`       -- list of items field *(new from v0.3.2)*
+* `DocumentField`   -- nested-document field
 
 
 CharField
@@ -104,6 +106,19 @@ Example:
         tags = ListField(item_types=[str], default=['news'])
 
 **NOTE:** mutable default values are protected (deep copied) and works as expected 
+
+
+Run tests
+=========
+
+    tox
+
+**NOTE:** In some cases it requires to downgrade your *virtualenv* to *12.0.2* to run it with python 3. 
+
+Related issues: 
+
+* [python-future issue](https://github.com/PythonCharmers/python-future/issues/148)
+* [import error issue](http://stackoverflow.com/questions/32861935/passing-python3-to-virtualenvwrapper-throws-up-importerror)
 
 
 Documentation

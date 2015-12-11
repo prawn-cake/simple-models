@@ -79,7 +79,6 @@ class DocumentTest(TestCase):
 
         class BidEmbedded(Document):
             xsi_type = CharField(default='BidEmbedded')
-            # xsi_type = fields.StringField(default='BidEmbedded')
             contentBid = DocumentField(model=Money)
 
         bid = BidEmbedded()
@@ -349,6 +348,48 @@ class DocumentTest(TestCase):
         msg = UserMessage(text='user message text')
         self.assertEqual(msg.user_id, None)
         self.assertEqual(msg.text, 'user message text')
+
+    def test_multiple_inheritance(self):
+        class AuthMixin(Document):
+            username = CharField(required=True)
+
+        class UserMixin(Document):
+            id = IntegerField()
+
+        class User(AuthMixin, UserMixin):
+            full_name = CharField()
+
+        user = User(username='John')
+        self.assertEqual(user.username, 'John')
+        self.assertEqual(user.id, None)
+        self.assertEqual(user.full_name, '')
+
+        class BankAccountMixin(Document):
+            account_id = IntegerField()
+            bank_name = CharField(default='Golden sink')
+
+        class MyUser(User, BankAccountMixin):
+            id = FloatField(required=True)
+
+        # expect that inherited username field is still required
+        with self.assertRaises(FieldRequiredError) as err:
+            my_user = MyUser(id=1)
+            self.assertIsNone(my_user)
+            self.assertIn('Field username is required', str(err))
+
+        # Check that id value was overridden and coerced to float
+        my_user = MyUser(id=1, username='Max')
+        self.assertIsInstance(my_user.id, float)
+
+        # Check fields existence
+        self.assertEqual(my_user.full_name, '')
+        self.assertEqual(my_user.account_id, None)
+        self.assertEqual(my_user.bank_name, 'Golden sink')
+        self.assertEqual(my_user, {'id': 1.0,
+                                   'full_name': '',
+                                   'username': 'Max',
+                                   'account_id': None,
+                                   'bank_name': 'Golden sink'})
 
 
 class ValidationTest(TestCase):
