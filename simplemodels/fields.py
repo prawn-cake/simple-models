@@ -2,7 +2,6 @@
 """ Fields for DictEmbedded model """
 import copy
 from decimal import Decimal, InvalidOperation
-
 import six
 
 from simplemodels import PYTHON_VERSION
@@ -12,7 +11,7 @@ from simplemodels.utils import is_document
 
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
-           'CharField', 'BooleanField', 'ListField']
+           'CharField', 'BooleanField', 'ListField', 'DocumentField']
 
 
 class SimpleField(object):
@@ -165,7 +164,7 @@ class SimpleField(object):
         return kwargs
 
     def __get__(self, instance, owner):
-        return instance.__dict__.get(self.name, self.default)
+        return instance.__dict__.get(self.name)
 
     def __set_value__(self, instance, value):
         """Common value setter to use it from __set__ descriptor and from
@@ -176,6 +175,7 @@ class SimpleField(object):
         """
         value = self.validate(value)
         instance.__dict__[self.name] = value
+        return value
 
     def __set__(self, instance, value):
         # print('Set %r -> %s' % (instance, value))
@@ -243,7 +243,7 @@ class CharField(SimpleField):
         """
         if value is None:
             value = ''
-        super(CharField, self).__set_value__(instance, value)
+        return super(CharField, self).__set_value__(instance, value)
 
 
 class BooleanField(SimpleField):

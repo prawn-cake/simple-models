@@ -4,51 +4,11 @@ from unittest import TestCase
 from datetime import datetime
 import time
 
-import six
-
 from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     ValidationDefaultError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
-
-# Test model classes
-
-
-class MailboxItem(Document):
-    subject = SimpleField(default='')
-    body = SimpleField(default='')
-    type = SimpleField(choices=["SUGGESTION", "MAIL"],
-                       max_length=10,
-                       default='MAIL')
-    # received_at = SimpleField(default=timezone.now)
-    received_at = SimpleField(default='')
-    is_read = SimpleField(default=False)
-
-    def __init__(self, **kwargs):
-        super(MailboxItem, self).__init__(**kwargs)
-        if 'received_at' not in kwargs and not self.received_at:
-            self.received_at = datetime.now()
-
-    def __repr__(self):
-        return six.u("<{}({}): {}>".format(
-            self.__class__.__name__, self.type, self.subject))
-
-    def __unicode__(self):
-        return six.u("<{}({}): {}>".format(
-            self.__class__.__name__, self.type, self.subject))
-
-
-class Address(Document):
-    street = SimpleField()
-
-
-class Person(Document):
-    name = SimpleField(required=True)
-    address = SimpleField(validators=[Address])
-
-
-# End of test model classes
 
 
 class AttributeDictTest(TestCase):
@@ -122,6 +82,8 @@ class DocumentTest(TestCase):
         self.assertTrue(TestDocument(xsi_type='html'))
 
     def test_default_values_with_several_instances(self):
+        from simplemodels.tests.stub_models import MailboxItem
+
         td = MailboxItem()
         td_2 = MailboxItem(is_read=True)
 
@@ -154,6 +116,8 @@ class DocumentTest(TestCase):
             self.assertIsNone(msg)
 
     def test_getting_classname(self):
+        from simplemodels.tests.stub_models import Address
+
         self.assertEqual(Address.__name__, 'Address')
 
     def test_property_getter(self):
@@ -286,7 +250,7 @@ class DocumentTest(TestCase):
         )
         self.assertEqual(msg.level, 'DEBUG')
 
-    def test_ignore_omit_not_passed_fields_attribute(self):
+    def test_omit_not_passed_fields_attribute(self):
         class Message(Document):
             text = CharField(max_length=120)
 
@@ -305,6 +269,17 @@ class DocumentTest(TestCase):
         msg.text = None
         self.assertEqual(msg, {'text': ''})
         self.assertEqual(msg.text, '')
+
+    def test_omit_not_passed_fields_attribute_with_defaults(self):
+        class User(Document):
+            OMIT_NOT_PASSED_FIELDS = True
+
+            name = CharField(max_length=120)
+            role = CharField(default='admin')
+
+        user = User()
+        self.assertEqual(user, {'role': 'admin'})
+        self.assertEqual(user.role, 'admin')
 
     def test_choices_option(self):
         class LogMessage(Document):
@@ -394,6 +369,8 @@ class DocumentTest(TestCase):
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
+        from simplemodels.tests.stub_models import Person
+
         with self.assertRaises(ValidationError):
             p = Person(address='Pagoda street')
             self.assertIsNone(p)

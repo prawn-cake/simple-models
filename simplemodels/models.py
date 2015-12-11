@@ -41,6 +41,7 @@ class DocumentMeta(type):
 
         _fields = {}
 
+        # Inherit fields from the parents
         for parent_cls in parents:
             parent_fields = getattr(parent_cls, '_fields', {})
             _fields.update(parent_fields)
@@ -67,6 +68,9 @@ class Document(AttributeDict):
 
     # TODO: implement some kind of class Meta:
     ALLOW_EXTRA_FIELDS = False
+
+    # if field is not passed to init and it doesn't have default value it will
+    # be omitted with this option
     OMIT_NOT_PASSED_FIELDS = False
 
     def __init__(self, **kwargs):
@@ -96,17 +100,18 @@ class Document(AttributeDict):
             # Build model structure
             if field_name in kwargs:
                 # set presented field
-                field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = field_obj.__get__(self, field_name)
+                val = field_obj.__set_value__(self, field_val)
+                kwargs[field_name] = val
             elif issubclass(type(field_obj), DocumentField):
                 # build empty nested document
-                field_obj.__set_value__(self, {})
-                kwargs[field_name] = field_obj.__get__(self, field_name)
+                val = field_obj.__set_value__(self, {})
+                kwargs[field_name] = val
             else:
-                # field is not presented in the passed parameters
-                if not self.OMIT_NOT_PASSED_FIELDS:
-                    field_obj.__set_value__(self, field_val)
-                    kwargs[field_name] = field_obj.__get__(self, field_name)
+                # field is not presented in the given init parameters
+                if field_val is None and self.OMIT_NOT_PASSED_FIELDS:
+                    continue
+                val = field_obj.__set_value__(self, field_val)
+                kwargs[field_name] = val
 
         return kwargs
 
