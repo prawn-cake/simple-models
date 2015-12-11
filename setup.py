@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='simple-models',
-    version='0.3.7',
+    version='0.3.8',
     packages=['simplemodels'],
 
     install_required=['six==1.9.0'],
