@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 
 from simplemodels.exceptions import ValidationError, FieldRequiredError, \
-    ValidationDefaultError, ImmutableDocumentError
+    DefaultValueError, ImmutableDocumentError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
@@ -377,7 +377,7 @@ class ValidationTest(TestCase):
 
     def test_validation_with_default_values(self):
         # Expect an error on class initialization step
-        with self.assertRaises(ValidationDefaultError):
+        with self.assertRaises(DefaultValueError):
             class A(Document):
                 id = IntegerField(default='a')
 

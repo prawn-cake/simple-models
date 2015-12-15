@@ -5,7 +5,10 @@ import six
 __all__ = [
     'ValidationError',
     'FieldRequiredError',
-    'ValidationTypeIsNotSupported'
+    'TypeIsNotSupported',
+    'DefaultValueError',
+    'ImmutableDocumentError',
+    'ImmutableFieldError'
 ]
 
 
@@ -18,17 +21,15 @@ class ValidationError(Exception):
 
 class FieldRequiredError(ValidationError):
     """ Raised when required field is not found """
-
     pass
 
 
-class ValidationTypeIsNotSupported(ValidationError):
+class TypeIsNotSupported(ValidationError):
     pass
 
 
-class ValidationDefaultError(ValidationError):
+class DefaultValueError(ValidationError):
     """Raised when default value is wrong"""
-
     pass
 
 

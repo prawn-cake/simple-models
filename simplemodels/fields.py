@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 import six
 
 from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
+from simplemodels.exceptions import ValidationError, DefaultValueError, \
     ImmutableFieldError, FieldRequiredError
 from simplemodels.utils import is_document
 
@@ -16,7 +16,8 @@ __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
 
 class SimpleField(object):
 
-    """Class-field with descriptor for Document"""
+    """Basic field. It stores values as is by default.
+    """
 
     MUTABLE_TYPES = (list, dict, set, bytearray)
     CHOICES_TYPES = (tuple, list, set)
@@ -28,7 +29,6 @@ class SimpleField(object):
         :param default: default value
         :param required: is field required
         :param choices: choices list.
-        :param validator: callable object to validate a value. DEPRECATED
         :param validators: list of callable objects - validators
         :param error_text: user-defined error text in case of errors
         :param immutable: immutable field type
@@ -62,17 +62,19 @@ class SimpleField(object):
 
         :param value: default value
         """
+        # Make a deep copy for mutable default values
         if isinstance(value, SimpleField.MUTABLE_TYPES):
             self.default = lambda: copy.deepcopy(value)
         else:
             self.default = value
 
+        # Validate and set default value
         if value is not None:
             if callable(self.default):
-                self.validate(value=self.default(), err=ValidationDefaultError)
+                self.validate(value=self.default(), err=DefaultValueError)
             else:
                 self.default = self.validate(value=self.default,
-                                             err=ValidationDefaultError)
+                                             err=DefaultValueError)
 
     @property
     def name(self):
