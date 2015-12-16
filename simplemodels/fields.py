@@ -155,9 +155,10 @@ class SimpleField(object):
 
     @staticmethod
     def _add_default_validator(validator, kwargs):
-        """Helper method for subclasses
+        """Helper method to add default validator used in subclasses
 
-        :param validator:
+        :param kwargs: dict: field init key-value arguments
+        :param validator: callable
         """
         kwargs.setdefault('validators', [])
 
