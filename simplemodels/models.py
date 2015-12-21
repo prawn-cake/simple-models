@@ -118,9 +118,7 @@ class Document(AttributeDict):
     @classmethod
     def _clean_kwargs(cls, kwargs):
         fields = getattr(cls, '_fields', {})
-        if cls.ALLOW_EXTRA_FIELDS:  # put everything extra in the document
-            kwargs = {k: v for k, v in kwargs.items()}
-        else:
+        if not cls.ALLOW_EXTRA_FIELDS:  # filter extra fields if passed
             kwargs = {k: v for k, v in kwargs.items() if k in fields}
 
         return kwargs
