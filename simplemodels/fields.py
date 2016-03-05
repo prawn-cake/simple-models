@@ -121,7 +121,7 @@ class SimpleField(object):
     def _pre_validate(self, value, err=ValidationError):
         """One of the validation chain method.
 
-        :param value:
+        :param value: simplemodels.exceptions.ValidationError: class
         :param err:
         :return:
         """
@@ -131,7 +131,7 @@ class SimpleField(object):
         """Helper method to validate field.
 
         :param value: value to validate
-        :param err: simplemodels.exceptions.ValidationError class
+        :param err: simplemodels.exceptions.ValidationError: class
         :return: validated value
         """
         # Validate required

@@ -1,5 +1,4 @@
-simple-models
-=============
+# simple-models
 [![Build Status](https://travis-ci.org/prawn-cake/simple-models.svg?branch=master)](https://travis-ci.org/prawn-cake/simple-models)
 [![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg?branch=master&service=github)](https://coveralls.io/github/prawn-cake/simple-models?branch=master)
@@ -12,14 +11,12 @@ Simple models - it is:
 * Work with data flexibly with dict-like structures;
 
 
-Install
-=======
+## Install
 
     pip install simple-models
 
 
-Quick start
-===========
+## Quick start
 
 Describe your document model, use suitable fields or nested documents 
 
@@ -60,8 +57,7 @@ Describe your document model, use suitable fields or nested documents
     '{"date_of_birth": null, "id": 0, "address": {"city": "Saint-Petersburg", "street": "6th Avenue"}, "name": "John"}'
 
 
-Fields
-======
+## Fields
 * `SimpleField`     -- generic field (useful in cases when other fields are not)
 * `IntegerField`    -- integer field
 * `FloatField`      -- float field
@@ -72,8 +68,8 @@ Fields
 * `DocumentField`   -- nested-document field
 
 
-CharField
----------
+### CharField
+
 CharField is a field with default unicode validator (for Python 2), all input strings will be transformed to unicode by default
 
 Example (for python 2):
@@ -95,8 +91,8 @@ To disable this behaviour **(not recommended)**, pass `is_unicode=False` field p
     >>> False, True
 
             
-ListField
----------
+### ListField
+
 Allows you to define list of items
 
 Example:
@@ -108,8 +104,41 @@ Example:
 **NOTE:** mutable default values are protected (deep copied) and works as expected 
 
 
-Run tests
-=========
+### Meta
+
+*Meta* is a nested structure to define some extra document options
+
+Example:
+
+    class User(Document):
+        name = CharField()
+        role = CharField()
+
+        class Meta:
+            ALLOW_EXTRA_FIELDS = False
+            OMIT_MISSED_FIELDS = True
+            
+#### Meta options
+
+* `ALLOW_EXTRA_FIELDS` - accept to put extra fields not defined with schema
+    
+        >>> user = User(name='Maksim', role='Admin', id=47)
+        >>> user
+        {'name': 'Maksim', 'role': 'Admin', 'id': 47}
+
+* `OMIT_MISSED_FIELDS` - by default document instance structure is built with schema-defined keys even if it's not passed ( *default* or *None* will be set for absent).
+    This options allows to omit missed fields from document
+        
+        >>> user = User(name='Maksim')
+        >>> user
+        
+        # Without option
+        {'name': 'Maksim', 'role': None}
+        
+        # With option
+        {'name': 'Maksim'}
+        
+## Run tests
 
     tox
 
@@ -121,20 +150,14 @@ Related issues:
 * [import error issue](http://stackoverflow.com/questions/32861935/passing-python3-to-virtualenvwrapper-throws-up-importerror)
 
 
-Documentation
-=============
-http://simple-models.readthedocs.org/ (TO BE UPDATED)
 
-
-Bug tracker
-===========
+## Bug tracker
 
 Warm welcome to suggestions and concerns
 
 https://github.com/prawn-cake/simple-models/issues
 
 
-License
-=======
+## License
 
 MIT - http://opensource.org/licenses/MIT

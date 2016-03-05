@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import six
+import inspect
 from simplemodels.exceptions import ImmutableDocumentError
 from simplemodels.fields import SimpleField, DocumentField
 
@@ -40,11 +41,17 @@ class DocumentMeta(type):
         """
 
         _fields = {}
+        _meta = AttributeDict()
 
-        # Inherit fields from the parents
+        # Document inheritance implementation
         for parent_cls in parents:
+            # Copy parent fields
             parent_fields = getattr(parent_cls, '_fields', {})
             _fields.update(parent_fields)
+
+            # Copy parent meta options
+            parent_meta = getattr(parent_cls, '_meta', AttributeDict())
+            _meta.update(parent_meta)
 
         # Inspect subclass to save SimpleFields and require field names
         for field_name, obj in dct.items():
@@ -53,9 +60,12 @@ class DocumentMeta(type):
                 obj._name = field_name
                 obj._holder_name = name  # class holder name
                 _fields[obj.name] = obj
+            elif all([field_name == 'Meta', inspect.isclass(obj)]):
+                _meta.update(obj.__dict__)
 
         dct['_fields'] = _fields
         dct['_parents'] = tuple(parents)
+        dct['_meta'] = _meta
 
         cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
         return cls
@@ -66,12 +76,11 @@ class Document(AttributeDict):
 
     """ Main class to represent structured dict-like document """
 
-    # TODO: implement some kind of class Meta:
-    ALLOW_EXTRA_FIELDS = False
+    class Meta:
+        ALLOW_EXTRA_FIELDS = False
 
-    # if field is not passed to init and it doesn't have default value it will
-    # be omitted with this option
-    OMIT_NOT_PASSED_FIELDS = False
+        # if field is not passed to the constructor, exclude it from structure
+        OMIT_MISSED_FIELDS = False
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
@@ -108,7 +117,7 @@ class Document(AttributeDict):
                 kwargs[field_name] = val
             else:
                 # field is not presented in the given init parameters
-                if field_val is None and self.OMIT_NOT_PASSED_FIELDS:
+                if field_val is None and self._meta.OMIT_MISSED_FIELDS:
                     continue
                 val = field_obj.__set_value__(self, field_val)
                 kwargs[field_name] = val
@@ -118,7 +127,9 @@ class Document(AttributeDict):
     @classmethod
     def _clean_kwargs(cls, kwargs):
         fields = getattr(cls, '_fields', {})
-        if cls.ALLOW_EXTRA_FIELDS:  # put everything extra in the document
+
+        # put everything extra in the document
+        if cls._meta.ALLOW_EXTRA_FIELDS:
             kwargs = {k: v for k, v in kwargs.items()}
         else:
             kwargs = {k: v for k, v in kwargs.items() if k in fields}

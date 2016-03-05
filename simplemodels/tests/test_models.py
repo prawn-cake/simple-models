@@ -236,7 +236,8 @@ class DocumentTest(TestCase):
         """
 
         class LogMessage(Document):
-            ALLOW_EXTRA_FIELDS = True
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
 
             timestamp = CharField()
             app_name = CharField()
@@ -249,37 +250,6 @@ class DocumentTest(TestCase):
             level='DEBUG'  # extra field isn't described in the document
         )
         self.assertEqual(msg.level, 'DEBUG')
-
-    def test_omit_not_passed_fields_attribute(self):
-        class Message(Document):
-            text = CharField(max_length=120)
-
-        msg = Message()
-        self.assertEqual(msg, {'text': ''})
-
-        class MessageWithoutNone(Document):
-            OMIT_NOT_PASSED_FIELDS = True
-
-            text = CharField()
-
-        msg = MessageWithoutNone()
-        self.assertEqual(msg, {})
-        self.assertEqual(msg.text, None)
-
-        msg.text = None
-        self.assertEqual(msg, {'text': ''})
-        self.assertEqual(msg.text, '')
-
-    def test_omit_not_passed_fields_attribute_with_defaults(self):
-        class User(Document):
-            OMIT_NOT_PASSED_FIELDS = True
-
-            name = CharField(max_length=120)
-            role = CharField(default='admin')
-
-        user = User()
-        self.assertEqual(user, {'role': 'admin'})
-        self.assertEqual(user.role, 'admin')
 
     def test_choices_option(self):
         class LogMessage(Document):
@@ -365,6 +335,72 @@ class DocumentTest(TestCase):
                                    'username': 'Max',
                                    'account_id': None,
                                    'bank_name': 'Golden sink'})
+
+
+class DocumentMetaOptionsTest(TestCase):
+    def test_nested_meta(self):
+        class Message(Document):
+            text = SimpleField()
+
+            class Meta:
+                ALLOW_EXTRA_FIELDS = False
+                OMIT_MISSED_FIELDS = True
+
+        msg = Message()
+        self.assertEqual(msg._meta.OMIT_MISSED_FIELDS, True)
+        self.assertEqual(msg._meta.ALLOW_EXTRA_FIELDS, False)
+
+    def test_nested_meta_with_inheritance(self):
+        class Message(Document):
+            text = SimpleField()
+
+            class Meta:
+                ALLOW_EXTRA_FIELDS = False
+                OMIT_MISSED_FIELDS = True
+
+        class LogMessage(Message):
+            logfile = CharField()
+
+            class Meta:
+                OMIT_MISSED_FIELDS = False
+
+        # Expect that Message meta options will be inherited
+        log_msg = LogMessage()
+        self.assertEqual(log_msg._meta.OMIT_MISSED_FIELDS, False)
+        self.assertEqual(log_msg._meta.ALLOW_EXTRA_FIELDS, False)
+
+    def test_omit_missed_fields_attribute(self):
+        class Message(Document):
+            text = CharField(max_length=120)
+
+        msg = Message()
+        self.assertEqual(msg, {'text': ''})
+
+        class MessageWithoutNone(Document):
+            class Meta:
+                OMIT_MISSED_FIELDS = True
+
+            text = CharField()
+
+        msg = MessageWithoutNone()
+        self.assertEqual(msg, {})
+        self.assertEqual(msg.text, None)
+
+        msg.text = None
+        self.assertEqual(msg, {'text': ''})
+        self.assertEqual(msg.text, '')
+
+    def test_omit_missed_fields_attribute_with_defaults(self):
+        class User(Document):
+            name = CharField(max_length=120)
+            role = CharField(default='admin')
+
+            class Meta:
+                OMIT_MISSED_FIELDS = True
+
+        user = User()
+        self.assertEqual(user, {'role': 'admin'})
+        self.assertEqual(user.role, 'admin')
 
 
 class ValidationTest(TestCase):
