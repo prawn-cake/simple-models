@@ -137,7 +137,29 @@ Example:
         
         # With option
         {'name': 'Maksim'}
-        
+
+
+### Post-init model validation
+
+Helps to validate your fields when it depends on the other fields
+
+For example let's validate length of admin password if the user is.
+
+    class User(Document):
+        name = CharField()
+        password = CharField(required=True)
+        is_admin = BooleanField(default=False)
+
+        @staticmethod
+        def validate_password(document, value):
+            if document.is_admin and len(value) < 10:
+                raise ModelValidationError(
+                    'Admin password is too short (< 10 characters)')
+            return value
+            
+**NOTE:** validation method must be static, have `validate_{field_name}` format and get 2 parameters: *document* and *value*             
+
+
 ## Run tests
 
     tox

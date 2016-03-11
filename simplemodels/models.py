@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import six
 import inspect
-from simplemodels.exceptions import ImmutableDocumentError
+from simplemodels.exceptions import ImmutableDocumentError, \
+    ModelValidationError
 from simplemodels.fields import SimpleField, DocumentField
 
 
@@ -88,6 +89,7 @@ class Document(AttributeDict):
         # dict init
         prepared_fields = self._prepare_fields(**kwargs)
         super(Document, self).__init__(**prepared_fields)
+        self._post_init_validation()
 
     def _prepare_fields(self, **kwargs):
         """Do field validations and set defaults
@@ -96,7 +98,8 @@ class Document(AttributeDict):
         :return: :raise RequiredValidationError:
         """
 
-        # Do some validations
+        # It validates values on set, see
+        # simplemodels.fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
 
             # Get field value or set default
@@ -135,6 +138,22 @@ class Document(AttributeDict):
             kwargs = {k: v for k, v in kwargs.items() if k in fields}
 
         return kwargs
+
+    def _post_init_validation(self):
+        """Validate model after init
+        """
+        internals = dir(self)
+        # NOTE: this can be done in the DocumentMeta
+        for field_name, field_obj in self._fields.items():
+            method_name = 'validate_%s' % field_name
+            if method_name in internals:
+                method = getattr(self, method_name)
+                if inspect.isfunction(method):
+                    # NOTE: probably need to pass immutable copy of the object
+                    method(self, self[field_name])
+                else:
+                    raise ModelValidationError(
+                        '%s (%r) is not a function' % (method_name, method, ))
 
 
 class ImmutableDocument(Document):

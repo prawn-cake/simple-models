@@ -8,15 +8,21 @@ __all__ = [
     'TypeIsNotSupported',
     'DefaultValueError',
     'ImmutableDocumentError',
-    'ImmutableFieldError'
+    'ImmutableFieldError',
+    'ModelValidationError'
 ]
 
 
 class ValidationError(Exception):
     """ Custom exception class. Useful for validation methods """
 
-    def __unicode__(self):
+    def __str__(self):
         return six.u(self.message)
+
+
+class ModelValidationError(ValidationError):
+    """User-defined exception. Raised when post model validation is failed"""
+    pass
 
 
 class FieldRequiredError(ValidationError):

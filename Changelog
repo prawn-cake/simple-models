@@ -4,8 +4,9 @@ Changelog
 0.3.7+1 (UNRELEASED)
 --------------------
 
-* Implemented Document.Meta AttributeDict based options
-* Renamed Meta.OMIT_NOT_PASSED_FIELDS -> Meta.OMIT_MISSED_FIELDS
+* [Feature] Implemented Document.Meta AttributeDict based options
+* [Improvement] Renamed Meta.OMIT_NOT_PASSED_FIELDS -> Meta.OMIT_MISSED_FIELDS
+* [Feature] Post-init model validation
 
 0.3.7 (2015-12-11)
 -----------------

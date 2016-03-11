@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 
 from simplemodels.exceptions import ValidationError, FieldRequiredError, \
-    DefaultValueError, ImmutableDocumentError
+    DefaultValueError, ImmutableDocumentError, ModelValidationError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
@@ -335,6 +335,27 @@ class DocumentTest(TestCase):
                                    'username': 'Max',
                                    'account_id': None,
                                    'bank_name': 'Golden sink'})
+
+    def test_post_model_validation(self):
+        class User(Document):
+            name = CharField()
+            password = CharField(required=True)
+            is_admin = BooleanField(default=False)
+
+            @staticmethod
+            def validate_password(document, value):
+                if document.is_admin and len(value) < 10:
+                    raise ModelValidationError(
+                        'Admin password is too short (< 10 characters)')
+                return value
+
+        with self.assertRaises(ModelValidationError) as err:
+            user = User(name='Mikko', password='123', is_admin=True)
+            self.assertIn('Admin password is too short', str(err))
+            self.assertIsNone(user)
+
+        user = User(name='Mikko', password='1234567890', is_admin=True)
+        self.assertIsInstance(user, User)
 
 
 class DocumentMetaOptionsTest(TestCase):
