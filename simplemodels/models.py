@@ -19,11 +19,16 @@ class AttributeDict(dict):
             return super(AttributeDict, self).__getattr__(self, name)
 
         try:
-            return self[name]
+            val = self[name]
+            if isinstance(val, dict) and not isinstance(val, AttributeDict):
+                return AttributeDict(val)
+            return val
         except KeyError:
             raise AttributeError("Attribute '{}' doesn't exist".format(name))
 
     def __setattr__(self, key, value):
+        if isinstance(value, dict):
+            value = AttributeDict(value)
         super(AttributeDict, self).__setattr__(key, value)
         self[key] = super(AttributeDict, self).__getattribute__(key)
 

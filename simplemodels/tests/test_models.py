@@ -27,6 +27,25 @@ class AttributeDictTest(TestCase):
         ad_copy = deepcopy(attr_d)
         self.assertTrue(ad_copy)
 
+    def test_nested_dict_access_via_attributes(self):
+        # Test nested attributes on create (on get in fact)
+        d = AttributeDict(a=1, nested=dict(b=2, nested_2=dict(c=3)))
+        self.assertEqual(d.a, 1)
+        self.assertEqual(d.nested.b, 2)
+        self.assertEqual(d.nested.nested_2.c, 3)
+        self.assertEqual(d, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
+
+        # Test nested attributes on set
+        d_2 = AttributeDict()
+        d_2.a = 1
+        d_2.nested = dict(b=2)
+        d_2.nested.nested_2 = dict(c=3)
+        self.assertEqual(d_2.a, 1)
+        self.assertEqual(d_2.nested.b, 2)
+        self.assertEqual(d_2.nested.nested_2.c, 3)
+        self.assertEqual(
+            d_2, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
+
 
 class DocumentTest(TestCase):
     def test_document(self):
