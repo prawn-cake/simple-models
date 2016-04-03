@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-""" Fields for DictEmbedded model """
 import copy
 from decimal import Decimal, InvalidOperation
 import six
@@ -11,13 +10,12 @@ from simplemodels.utils import is_document
 
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
-           'CharField', 'BooleanField', 'ListField', 'DocumentField']
+           'CharField', 'BooleanField', 'ListField', 'DocumentField',
+           'DictField']
 
 
 class SimpleField(object):
-
-    """Basic field. It stores values as is by default.
-    """
+    """Basic field. It stores values as is by default."""
 
     MUTABLE_TYPES = (list, dict, set, bytearray)
     CHOICES_TYPES = (tuple, list, set)
@@ -62,7 +60,8 @@ class SimpleField(object):
 
         :param value: default value
         """
-        # Make a deep copy for mutable default values
+        # Make a deep copy for mutable default values by setting it as a
+        # callable lambda function, see the code below
         if isinstance(value, SimpleField.MUTABLE_TYPES):
             self.default = lambda: copy.deepcopy(value)
         else:
@@ -167,21 +166,32 @@ class SimpleField(object):
         return kwargs
 
     def __get__(self, instance, owner):
+        """Descriptor getter
+
+        :param instance: simplemodels.models.Document instance
+        :param owner: simplemodels.models.DocumentMeta
+        :return: field value
+        """
         return instance.__dict__.get(self.name)
 
     def __set_value__(self, instance, value):
         """Common value setter to use it from __set__ descriptor and from
         simplemodels.models.Document init
 
-        :param instance: instance object
-        :param value: value
+        :param instance: simplemodels.models.Document instance
+        :param value: field value
         """
         value = self.validate(value)
         instance.__dict__[self.name] = value
         return value
 
     def __set__(self, instance, value):
-        # print('Set %r -> %s' % (instance, value))
+        """Descriptor setter
+
+        :param instance: simplemodels.models.Document instance
+        :param value: field value
+        :raise ImmutableFieldError:
+        """
         if self._immutable:
             raise ImmutableFieldError('{!r} field is immutable'.format(self))
         self.__set_value__(instance, value)
@@ -327,3 +337,17 @@ class ListField(SimpleField):
         if errors:
             raise err('\n'.join(errors))
         return items_list
+
+
+class DictField(SimpleField):
+    """ Dictionary field."""
+
+    def __init__(self, **kwargs):
+        self._add_default_validator(dict, kwargs)
+        super(DictField, self).__init__(**kwargs)
+
+    def __getitem__(self, item):
+        return self._value[item]
+
+    def __setitem__(self, key, value):
+        self._value[key] = value

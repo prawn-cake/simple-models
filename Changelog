@@ -7,6 +7,7 @@ Changelog
 * [Feature] Implemented Document.Meta AttributeDict based options
 * [Improvement] Renamed Meta.OMIT_NOT_PASSED_FIELDS -> Meta.OMIT_MISSED_FIELDS
 * [Feature] Post-init model validation
+* [Feature] New DictField
 
 0.3.7 (2015-12-11)
 -----------------

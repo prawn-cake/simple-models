@@ -7,11 +7,11 @@ from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
     FieldRequiredError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
-    BooleanField, CharField, DocumentField, ListField, SimpleField
+    BooleanField, CharField, DocumentField, ListField, SimpleField, DictField
 from simplemodels.models import Document
 
 
-class TypedFieldsTest(TestCase):
+class FieldsTest(TestCase):
     def setUp(self):
         class SubDocument(Document):
             int_field = IntegerField()
@@ -188,13 +188,40 @@ class TypedFieldsTest(TestCase):
         for user in post.viewed:
             self.assertIsInstance(user, User)
 
+    def test_dict_field(self):
+        class User(Document):
+            attrs = DictField(required=True)
+
+            def get_attr_x(self):
+                if 'x' in self.attrs:
+                    return self.attrs['x']
+                return None
+
+            def set_attr_x(self, val):
+                self.attrs['x'] = val
+
+        error_values = (1, ['test'], {True, 2, 'x'}, (None, 23, False), None)
+        for val in error_values:
+            with self.assertRaises(ValidationError):
+                user = User(attrs=val)
+                self.assertIsNone(user)
+
+        correct_values = ({'a': 1}, dict(a=None, b=False))
+        for val in correct_values:
+            user = User(attrs=val)
+            self.assertEqual(user.attrs, val)
+
+        # Test __setitem__ and __getitem__ field methods
+        user = User(attrs={})
+        self.assertEqual(user.get_attr_x(), None)
+
+        user.set_attr_x(1)
+        self.assertEqual(user.get_attr_x(), 1)
+
 
 class FieldsAttributesTest(TestCase):
     def setUp(self):
-        # class User(Document):
-        #     name = CharField()
-
-        # fields cls, test value
+        # fmt: fields cls, test value, extra init kwargs
         self.fields = [
             (SimpleField, ['my_field', 2, {'x': 1}, {1, 1, 2}], {}),
             (CharField, 'my_field', {}),
@@ -203,6 +230,7 @@ class FieldsAttributesTest(TestCase):
             (BooleanField, True, {}),
             (ListField, ['a', 1, 2.0], {'item_types': [str, int, float]}),
             (DecimalField, Decimal('47'), {}),
+            (DictField, {'answer': 42}, {}),
             # (DocumentField, {'name': 'Maks'}, {'model': User})
         ]
 

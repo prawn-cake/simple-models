@@ -79,7 +79,6 @@ class DocumentMeta(type):
 
 @six.add_metaclass(DocumentMeta)
 class Document(AttributeDict):
-
     """ Main class to represent structured dict-like document """
 
     class Meta:
@@ -152,22 +151,23 @@ class Document(AttributeDict):
         for field_name, field_obj in self._fields.items():
             method_name = 'validate_%s' % field_name
             if method_name in internals:
-                method = getattr(self, method_name)
-                if inspect.isfunction(method):
+                validation_method = getattr(self, method_name)
+                if inspect.isfunction(validation_method):
                     # NOTE: probably need to pass immutable copy of the object
-                    method(self, self[field_name])
+                    validation_method(self, self[field_name])
                 else:
                     raise ModelValidationError(
-                        '%s (%r) is not a function' % (method_name, method, ))
+                        '%s (%r) is not a function' %
+                        (method_name, validation_method, ))
 
 
 class ImmutableDocument(Document):
-    """Read only document. Useful"""
+    """Read only document. Useful for validation purposes only"""
 
     def __setattr__(self, key, value):
         raise ImmutableDocumentError(
-            'Set operation is not allowed for {}'.format(
-                self.__class__.__name__))
+            '%r is immutable. Set operation is not allowed for {}'.format(
+                self, self.__class__.__name__))
 
     def __setitem__(self, key, value):
         return setattr(self, key, value)
