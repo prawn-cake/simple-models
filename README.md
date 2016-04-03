@@ -66,9 +66,10 @@ Describe your document model, use suitable fields or nested documents
 * `BooleanField`    -- boolean field
 * `ListField`       -- list of items field *(new from v0.3.2)*
 * `DocumentField`   -- nested-document field
+* `DictField`       -- dictionary-specific field
 
 
-### CharField
+#### CharField
 
 CharField is a field with default unicode validator (for Python 2), all input strings will be transformed to unicode by default
 
@@ -91,7 +92,7 @@ To disable this behaviour **(not recommended)**, pass `is_unicode=False` field p
     >>> False, True
 
             
-### ListField
+#### ListField
 
 Allows you to define list of items
 
@@ -102,6 +103,17 @@ Example:
         tags = ListField(item_types=[str], default=['news'])
 
 **NOTE:** mutable default values are protected (deep copied) and works as expected 
+
+#### DictField
+
+This type of field enables to be more specific rather than just using `SimpleField` and also allows to use custom dict implementation, default is `dict` 
+
+Example:
+
+    class User(Document):
+        attrs = DictField(required=True, dict_cls=OrderedDict)
+        
+    user = User(attrs=[('b', 1), ('a', 2)])
 
 
 ### Meta

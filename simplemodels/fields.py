@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from collections import Mapping
 import copy
 from decimal import Decimal, InvalidOperation
+
 import six
 
 from simplemodels import PYTHON_VERSION
@@ -340,10 +342,14 @@ class ListField(SimpleField):
 
 
 class DictField(SimpleField):
-    """ Dictionary field."""
+    """ Dictionary field. Useful when you want to be more specific than just
+    using SimpleField"""
 
-    def __init__(self, **kwargs):
-        self._add_default_validator(dict, kwargs)
+    def __init__(self, dict_cls=dict, **kwargs):
+        if not issubclass(dict_cls, Mapping):
+            raise ValueError("Wrong dict_cls parameter '%r'. "
+                             "Must be Mapping" % dict_cls)
+        self._add_default_validator(dict_cls, kwargs)
         super(DictField, self).__init__(**kwargs)
 
     def __getitem__(self, item):

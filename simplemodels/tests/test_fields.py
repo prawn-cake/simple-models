@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import OrderedDict
 from decimal import Decimal
 from unittest import TestCase
 import six
@@ -217,6 +218,21 @@ class FieldsTest(TestCase):
 
         user.set_attr_x(1)
         self.assertEqual(user.get_attr_x(), 1)
+
+    def test_dict_field_with_custom_dict_cls(self):
+        # Check dict_cls parameter, must be always Mapping type
+        with self.assertRaises(ValueError) as err:
+            class FailedDoc(Document):
+                attrs = DictField(dict_cls=list)
+            failed = FailedDoc()
+            self.assertIsNone(failed)
+            self.assertIn('Wrong dict_cls parameter', str(err))
+
+        class User(Document):
+            attrs = DictField(required=True, dict_cls=OrderedDict)
+        user = User(attrs=[('b', 1), ('a', 2)])
+        self.assertIsInstance(user.attrs, OrderedDict)
+        self.assertEqual(list(user.attrs.values()), [1, 2])
 
 
 class FieldsAttributesTest(TestCase):
