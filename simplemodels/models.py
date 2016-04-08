@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import six
-from simplemodels.exceptions import ImmutableDocumentError
+import inspect
+from simplemodels.exceptions import ImmutableDocumentError, \
+    ModelValidationError
 from simplemodels.fields import SimpleField, DocumentField
 
 
@@ -17,11 +19,16 @@ class AttributeDict(dict):
             return super(AttributeDict, self).__getattr__(self, name)
 
         try:
-            return self[name]
+            val = self[name]
+            if isinstance(val, dict) and not isinstance(val, AttributeDict):
+                return AttributeDict(val)
+            return val
         except KeyError:
             raise AttributeError("Attribute '{}' doesn't exist".format(name))
 
     def __setattr__(self, key, value):
+        if isinstance(value, dict):
+            value = AttributeDict(value)
         super(AttributeDict, self).__setattr__(key, value)
         self[key] = super(AttributeDict, self).__getattribute__(key)
 
@@ -40,11 +47,17 @@ class DocumentMeta(type):
         """
 
         _fields = {}
+        _meta = AttributeDict()
 
-        # Inherit fields from the parents
+        # Document inheritance implementation
         for parent_cls in parents:
+            # Copy parent fields
             parent_fields = getattr(parent_cls, '_fields', {})
             _fields.update(parent_fields)
+
+            # Copy parent meta options
+            parent_meta = getattr(parent_cls, '_meta', AttributeDict())
+            _meta.update(parent_meta)
 
         # Inspect subclass to save SimpleFields and require field names
         for field_name, obj in dct.items():
@@ -53,9 +66,12 @@ class DocumentMeta(type):
                 obj._name = field_name
                 obj._holder_name = name  # class holder name
                 _fields[obj.name] = obj
+            elif all([field_name == 'Meta', inspect.isclass(obj)]):
+                _meta.update(obj.__dict__)
 
         dct['_fields'] = _fields
         dct['_parents'] = tuple(parents)
+        dct['_meta'] = _meta
 
         cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
         return cls
@@ -63,15 +79,13 @@ class DocumentMeta(type):
 
 @six.add_metaclass(DocumentMeta)
 class Document(AttributeDict):
-
     """ Main class to represent structured dict-like document """
 
-    # TODO: implement some kind of class Meta:
-    ALLOW_EXTRA_FIELDS = False
+    class Meta:
+        ALLOW_EXTRA_FIELDS = False
 
-    # if field is not passed to init and it doesn't have default value it will
-    # be omitted with this option
-    OMIT_NOT_PASSED_FIELDS = False
+        # if field is not passed to the constructor, exclude it from structure
+        OMIT_MISSED_FIELDS = False
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
@@ -79,6 +93,7 @@ class Document(AttributeDict):
         # dict init
         prepared_fields = self._prepare_fields(**kwargs)
         super(Document, self).__init__(**prepared_fields)
+        self._post_init_validation()
 
     def _prepare_fields(self, **kwargs):
         """Do field validations and set defaults
@@ -87,7 +102,8 @@ class Document(AttributeDict):
         :return: :raise RequiredValidationError:
         """
 
-        # Do some validations
+        # It validates values on set, see
+        # simplemodels.fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
 
             # Get field value or set default
@@ -108,7 +124,7 @@ class Document(AttributeDict):
                 kwargs[field_name] = val
             else:
                 # field is not presented in the given init parameters
-                if field_val is None and self.OMIT_NOT_PASSED_FIELDS:
+                if field_val is None and self._meta.OMIT_MISSED_FIELDS:
                     continue
                 val = field_obj.__set_value__(self, field_val)
                 kwargs[field_name] = val
@@ -118,21 +134,40 @@ class Document(AttributeDict):
     @classmethod
     def _clean_kwargs(cls, kwargs):
         fields = getattr(cls, '_fields', {})
-        if cls.ALLOW_EXTRA_FIELDS:  # put everything extra in the document
+
+        # put everything extra in the document
+        if cls._meta.ALLOW_EXTRA_FIELDS:
             kwargs = {k: v for k, v in kwargs.items()}
         else:
             kwargs = {k: v for k, v in kwargs.items() if k in fields}
 
         return kwargs
 
+    def _post_init_validation(self):
+        """Validate model after init
+        """
+        internals = dir(self)
+        # NOTE: this can be done in the DocumentMeta
+        for field_name, field_obj in self._fields.items():
+            method_name = 'validate_%s' % field_name
+            if method_name in internals:
+                validation_method = getattr(self, method_name)
+                if inspect.isfunction(validation_method):
+                    # NOTE: probably need to pass immutable copy of the object
+                    validation_method(self, self[field_name])
+                else:
+                    raise ModelValidationError(
+                        '%s (%r) is not a function' %
+                        (method_name, validation_method, ))
+
 
 class ImmutableDocument(Document):
-    """Read only document. Useful"""
+    """Read only document. Useful for validation purposes only"""
 
     def __setattr__(self, key, value):
         raise ImmutableDocumentError(
-            'Set operation is not allowed for {}'.format(
-                self.__class__.__name__))
+            '%r is immutable. Set operation is not allowed for {}'.format(
+                self, self.__class__.__name__))
 
     def __setitem__(self, key, value):
         return setattr(self, key, value)

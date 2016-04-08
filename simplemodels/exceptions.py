@@ -5,30 +5,37 @@ import six
 __all__ = [
     'ValidationError',
     'FieldRequiredError',
-    'ValidationTypeIsNotSupported'
+    'TypeIsNotSupported',
+    'DefaultValueError',
+    'ImmutableDocumentError',
+    'ImmutableFieldError',
+    'ModelValidationError'
 ]
 
 
 class ValidationError(Exception):
     """ Custom exception class. Useful for validation methods """
 
-    def __unicode__(self):
+    def __str__(self):
         return six.u(self.message)
+
+
+class ModelValidationError(ValidationError):
+    """User-defined exception. Raised when post model validation is failed"""
+    pass
 
 
 class FieldRequiredError(ValidationError):
     """ Raised when required field is not found """
-
     pass
 
 
-class ValidationTypeIsNotSupported(ValidationError):
+class TypeIsNotSupported(ValidationError):
     pass
 
 
-class ValidationDefaultError(ValidationError):
+class DefaultValueError(ValidationError):
     """Raised when default value is wrong"""
-
     pass
 
 

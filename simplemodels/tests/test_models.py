@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 
 from simplemodels.exceptions import ValidationError, FieldRequiredError, \
-    ValidationDefaultError, ImmutableDocumentError
+    DefaultValueError, ImmutableDocumentError, ModelValidationError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
 from simplemodels.models import AttributeDict, Document, ImmutableDocument
@@ -26,6 +26,25 @@ class AttributeDictTest(TestCase):
         attr_d = AttributeDict(a=1)
         ad_copy = deepcopy(attr_d)
         self.assertTrue(ad_copy)
+
+    def test_nested_dict_access_via_attributes(self):
+        # Test nested attributes on create (on get in fact)
+        d = AttributeDict(a=1, nested=dict(b=2, nested_2=dict(c=3)))
+        self.assertEqual(d.a, 1)
+        self.assertEqual(d.nested.b, 2)
+        self.assertEqual(d.nested.nested_2.c, 3)
+        self.assertEqual(d, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
+
+        # Test nested attributes on set
+        d_2 = AttributeDict()
+        d_2.a = 1
+        d_2.nested = dict(b=2)
+        d_2.nested.nested_2 = dict(c=3)
+        self.assertEqual(d_2.a, 1)
+        self.assertEqual(d_2.nested.b, 2)
+        self.assertEqual(d_2.nested.nested_2.c, 3)
+        self.assertEqual(
+            d_2, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
 
 
 class DocumentTest(TestCase):
@@ -236,7 +255,8 @@ class DocumentTest(TestCase):
         """
 
         class LogMessage(Document):
-            ALLOW_EXTRA_FIELDS = True
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
 
             timestamp = CharField()
             app_name = CharField()
@@ -249,37 +269,6 @@ class DocumentTest(TestCase):
             level='DEBUG'  # extra field isn't described in the document
         )
         self.assertEqual(msg.level, 'DEBUG')
-
-    def test_omit_not_passed_fields_attribute(self):
-        class Message(Document):
-            text = CharField(max_length=120)
-
-        msg = Message()
-        self.assertEqual(msg, {'text': ''})
-
-        class MessageWithoutNone(Document):
-            OMIT_NOT_PASSED_FIELDS = True
-
-            text = CharField()
-
-        msg = MessageWithoutNone()
-        self.assertEqual(msg, {})
-        self.assertEqual(msg.text, None)
-
-        msg.text = None
-        self.assertEqual(msg, {'text': ''})
-        self.assertEqual(msg.text, '')
-
-    def test_omit_not_passed_fields_attribute_with_defaults(self):
-        class User(Document):
-            OMIT_NOT_PASSED_FIELDS = True
-
-            name = CharField(max_length=120)
-            role = CharField(default='admin')
-
-        user = User()
-        self.assertEqual(user, {'role': 'admin'})
-        self.assertEqual(user.role, 'admin')
 
     def test_choices_option(self):
         class LogMessage(Document):
@@ -366,6 +355,93 @@ class DocumentTest(TestCase):
                                    'account_id': None,
                                    'bank_name': 'Golden sink'})
 
+    def test_post_model_validation(self):
+        class User(Document):
+            name = CharField()
+            password = CharField(required=True)
+            is_admin = BooleanField(default=False)
+
+            @staticmethod
+            def validate_password(document, value):
+                if document.is_admin and len(value) < 10:
+                    raise ModelValidationError(
+                        'Admin password is too short (< 10 characters)')
+                return value
+
+        with self.assertRaises(ModelValidationError) as err:
+            user = User(name='Mikko', password='123', is_admin=True)
+            self.assertIn('Admin password is too short', str(err))
+            self.assertIsNone(user)
+
+        user = User(name='Mikko', password='1234567890', is_admin=True)
+        self.assertIsInstance(user, User)
+
+
+class DocumentMetaOptionsTest(TestCase):
+    def test_nested_meta(self):
+        class Message(Document):
+            text = SimpleField()
+
+            class Meta:
+                ALLOW_EXTRA_FIELDS = False
+                OMIT_MISSED_FIELDS = True
+
+        msg = Message()
+        self.assertEqual(msg._meta.OMIT_MISSED_FIELDS, True)
+        self.assertEqual(msg._meta.ALLOW_EXTRA_FIELDS, False)
+
+    def test_nested_meta_with_inheritance(self):
+        class Message(Document):
+            text = SimpleField()
+
+            class Meta:
+                ALLOW_EXTRA_FIELDS = False
+                OMIT_MISSED_FIELDS = True
+
+        class LogMessage(Message):
+            logfile = CharField()
+
+            class Meta:
+                OMIT_MISSED_FIELDS = False
+
+        # Expect that Message meta options will be inherited
+        log_msg = LogMessage()
+        self.assertEqual(log_msg._meta.OMIT_MISSED_FIELDS, False)
+        self.assertEqual(log_msg._meta.ALLOW_EXTRA_FIELDS, False)
+
+    def test_omit_missed_fields_attribute(self):
+        class Message(Document):
+            text = CharField(max_length=120)
+
+        msg = Message()
+        self.assertEqual(msg, {'text': ''})
+
+        class MessageWithoutNone(Document):
+            class Meta:
+                OMIT_MISSED_FIELDS = True
+
+            text = CharField()
+
+        msg = MessageWithoutNone()
+        self.assertEqual(msg, {})
+        self.assertEqual(msg.text, None)
+
+        msg.text = None
+        self.assertEqual(msg, {'text': ''})
+        self.assertEqual(msg.text, '')
+
+    def test_omit_missed_fields_attribute_with_defaults(self):
+        class User(Document):
+            name = CharField(max_length=120)
+            role = CharField(default='admin')
+
+            class Meta:
+                OMIT_MISSED_FIELDS = True
+
+        user = User()
+        self.assertEqual(user, {'role': 'admin'})
+        self.assertEqual(user.role, 'admin')
+
 
 class ValidationTest(TestCase):
     def test_raise_validation_error(self):
@@ -377,7 +453,7 @@ class ValidationTest(TestCase):
 
     def test_validation_with_default_values(self):
         # Expect an error on class initialization step
-        with self.assertRaises(ValidationDefaultError):
+        with self.assertRaises(DefaultValueError):
             class A(Document):
                 id = IntegerField(default='a')
 

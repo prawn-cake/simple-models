@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
-""" Fields for DictEmbedded model """
+from collections import Mapping
 import copy
 from decimal import Decimal, InvalidOperation
+
 import six
 
 from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import ValidationError, ValidationDefaultError, \
+from simplemodels.exceptions import ValidationError, DefaultValueError, \
     ImmutableFieldError, FieldRequiredError
 from simplemodels.utils import is_document
 
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
-           'CharField', 'BooleanField', 'ListField', 'DocumentField']
+           'CharField', 'BooleanField', 'ListField', 'DocumentField',
+           'DictField']
 
 
 class SimpleField(object):
-
-    """Class-field with descriptor for Document"""
+    """Basic field. It stores values as is by default."""
 
     MUTABLE_TYPES = (list, dict, set, bytearray)
     CHOICES_TYPES = (tuple, list, set)
@@ -28,7 +29,6 @@ class SimpleField(object):
         :param default: default value
         :param required: is field required
         :param choices: choices list.
-        :param validator: callable object to validate a value. DEPRECATED
         :param validators: list of callable objects - validators
         :param error_text: user-defined error text in case of errors
         :param immutable: immutable field type
@@ -62,17 +62,20 @@ class SimpleField(object):
 
         :param value: default value
         """
+        # Make a deep copy for mutable default values by setting it as a
+        # callable lambda function, see the code below
         if isinstance(value, SimpleField.MUTABLE_TYPES):
             self.default = lambda: copy.deepcopy(value)
         else:
             self.default = value
 
+        # Validate and set default value
         if value is not None:
             if callable(self.default):
-                self.validate(value=self.default(), err=ValidationDefaultError)
+                self.validate(value=self.default(), err=DefaultValueError)
             else:
                 self.default = self.validate(value=self.default,
-                                             err=ValidationDefaultError)
+                                             err=DefaultValueError)
 
     @property
     def name(self):
@@ -119,7 +122,7 @@ class SimpleField(object):
     def _pre_validate(self, value, err=ValidationError):
         """One of the validation chain method.
 
-        :param value:
+        :param value: simplemodels.exceptions.ValidationError: class
         :param err:
         :return:
         """
@@ -129,7 +132,7 @@ class SimpleField(object):
         """Helper method to validate field.
 
         :param value: value to validate
-        :param err: simplemodels.exceptions.ValidationError class
+        :param err: simplemodels.exceptions.ValidationError: class
         :return: validated value
         """
         # Validate required
@@ -153,9 +156,10 @@ class SimpleField(object):
 
     @staticmethod
     def _add_default_validator(validator, kwargs):
-        """Helper method for subclasses
+        """Helper method to add default validator used in subclasses
 
-        :param validator:
+        :param kwargs: dict: field init key-value arguments
+        :param validator: callable
         """
         kwargs.setdefault('validators', [])
 
@@ -164,21 +168,32 @@ class SimpleField(object):
         return kwargs
 
     def __get__(self, instance, owner):
+        """Descriptor getter
+
+        :param instance: simplemodels.models.Document instance
+        :param owner: simplemodels.models.DocumentMeta
+        :return: field value
+        """
         return instance.__dict__.get(self.name)
 
     def __set_value__(self, instance, value):
         """Common value setter to use it from __set__ descriptor and from
         simplemodels.models.Document init
 
-        :param instance: instance object
-        :param value: value
+        :param instance: simplemodels.models.Document instance
+        :param value: field value
         """
         value = self.validate(value)
         instance.__dict__[self.name] = value
         return value
 
     def __set__(self, instance, value):
-        # print('Set %r -> %s' % (instance, value))
+        """Descriptor setter
+
+        :param instance: simplemodels.models.Document instance
+        :param value: field value
+        :raise ImmutableFieldError:
+        """
         if self._immutable:
             raise ImmutableFieldError('{!r} field is immutable'.format(self))
         self.__set_value__(instance, value)
@@ -324,3 +339,21 @@ class ListField(SimpleField):
         if errors:
             raise err('\n'.join(errors))
         return items_list
+
+
+class DictField(SimpleField):
+    """ Dictionary field. Useful when you want to be more specific than just
+    using SimpleField"""
+
+    def __init__(self, dict_cls=dict, **kwargs):
+        if not issubclass(dict_cls, Mapping):
+            raise ValueError("Wrong dict_cls parameter '%r'. "
+                             "Must be Mapping" % dict_cls)
+        self._add_default_validator(dict_cls, kwargs)
+        super(DictField, self).__init__(**kwargs)
+
+    def __getitem__(self, item):
+        return self._value[item]
+
+    def __setitem__(self, key, value):
+        self._value[key] = value

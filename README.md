@@ -1,5 +1,4 @@
-simple-models
-=============
+# simple-models
 [![Build Status](https://travis-ci.org/prawn-cake/simple-models.svg?branch=master)](https://travis-ci.org/prawn-cake/simple-models)
 [![Documentation Status](https://readthedocs.org/projects/simple-models/badge/?version=latest)](https://readthedocs.org/projects/simple-models/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg?branch=master&service=github)](https://coveralls.io/github/prawn-cake/simple-models?branch=master)
@@ -12,14 +11,12 @@ Simple models - it is:
 * Work with data flexibly with dict-like structures;
 
 
-Install
-=======
+## Install
 
     pip install simple-models
 
 
-Quick start
-===========
+## Quick start
 
 Describe your document model, use suitable fields or nested documents 
 
@@ -60,8 +57,7 @@ Describe your document model, use suitable fields or nested documents
     '{"date_of_birth": null, "id": 0, "address": {"city": "Saint-Petersburg", "street": "6th Avenue"}, "name": "John"}'
 
 
-Fields
-======
+## Fields
 * `SimpleField`     -- generic field (useful in cases when other fields are not)
 * `IntegerField`    -- integer field
 * `FloatField`      -- float field
@@ -70,10 +66,11 @@ Fields
 * `BooleanField`    -- boolean field
 * `ListField`       -- list of items field *(new from v0.3.2)*
 * `DocumentField`   -- nested-document field
+* `DictField`       -- dictionary-specific field
 
 
-CharField
----------
+#### CharField
+
 CharField is a field with default unicode validator (for Python 2), all input strings will be transformed to unicode by default
 
 Example (for python 2):
@@ -95,8 +92,8 @@ To disable this behaviour **(not recommended)**, pass `is_unicode=False` field p
     >>> False, True
 
             
-ListField
----------
+#### ListField
+
 Allows you to define list of items
 
 Example:
@@ -107,9 +104,75 @@ Example:
 
 **NOTE:** mutable default values are protected (deep copied) and works as expected 
 
+#### DictField
 
-Run tests
-=========
+This type of field enables to be more specific rather than just using `SimpleField` and also allows to use custom dict implementation, default is `dict` 
+
+Example:
+
+    class User(Document):
+        attrs = DictField(required=True, dict_cls=OrderedDict)
+        
+    user = User(attrs=[('b', 1), ('a', 2)])
+
+
+### Meta
+
+*Meta* is a nested structure to define some extra document options
+
+Example:
+
+    class User(Document):
+        name = CharField()
+        role = CharField()
+
+        class Meta:
+            ALLOW_EXTRA_FIELDS = False
+            OMIT_MISSED_FIELDS = True
+            
+#### Meta options
+
+* `ALLOW_EXTRA_FIELDS` - accept to put extra fields not defined with schema
+    
+        >>> user = User(name='Maksim', role='Admin', id=47)
+        >>> user
+        {'name': 'Maksim', 'role': 'Admin', 'id': 47}
+
+* `OMIT_MISSED_FIELDS` - by default document instance structure is built with schema-defined keys even if it's not passed ( *default* or *None* will be set for absent).
+    This options allows to omit missed fields from document
+        
+        >>> user = User(name='Maksim')
+        >>> user
+        
+        # Without option
+        {'name': 'Maksim', 'role': None}
+        
+        # With option
+        {'name': 'Maksim'}
+
+
+### Post-init model validation
+
+Helps to validate your fields when it depends on the other fields
+
+For example let's validate length of admin password if the user is.
+
+    class User(Document):
+        name = CharField()
+        password = CharField(required=True)
+        is_admin = BooleanField(default=False)
+
+        @staticmethod
+        def validate_password(document, value):
+            if document.is_admin and len(value) < 10:
+                raise ModelValidationError(
+                    'Admin password is too short (< 10 characters)')
+            return value
+            
+**NOTE:** validation method must be static, have `validate_{field_name}` format and get 2 parameters: *document* and *value*             
+
+
+## Run tests
 
     tox
 
@@ -121,20 +184,14 @@ Related issues:
 * [import error issue](http://stackoverflow.com/questions/32861935/passing-python3-to-virtualenvwrapper-throws-up-importerror)
 
 
-Documentation
-=============
-http://simple-models.readthedocs.org/ (TO BE UPDATED)
 
-
-Bug tracker
-===========
+## Bug tracker
 
 Warm welcome to suggestions and concerns
 
 https://github.com/prawn-cake/simple-models/issues
 
 
-License
-=======
+## License
 
 MIT - http://opensource.org/licenses/MIT
