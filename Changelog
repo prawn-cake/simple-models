@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.4.0+1 (UNRELEASED)
+--------------------
+* [Fix] Fix OMIT_MISSED_FIELDS behavior
+* [Improvement] Follow consistency and raise ValidationError instead of ValueError on choices validation if failed
+
+
 0.4.0 (2016-04-08)
 --------------------
 
@@ -8,6 +14,7 @@ Changelog
 * [Improvement] Renamed Meta.OMIT_NOT_PASSED_FIELDS -> Meta.OMIT_MISSED_FIELDS
 * [Feature] Post-init model validation
 * [Feature] New DictField
+
 
 0.3.7 (2015-12-11)
 -----------------
