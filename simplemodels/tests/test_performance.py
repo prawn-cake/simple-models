@@ -79,6 +79,7 @@ class User(Document):
         return ['tag1', 'tag2', 'tag3']
 
 
+@unittest.skip('skip awhile')
 class PerformanceTest(unittest.TestCase):
     SAMPLE_SET = 10000
     READ_OPS = 1000

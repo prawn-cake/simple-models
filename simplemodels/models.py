@@ -82,6 +82,7 @@ class Document(AttributeDict):
     """ Main class to represent structured dict-like document """
 
     class Meta:
+        # make a model 'schemaless'
         ALLOW_EXTRA_FIELDS = False
 
         # if field is not passed to the constructor, exclude it from structure
@@ -125,6 +126,9 @@ class Document(AttributeDict):
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta.OMIT_MISSED_FIELDS:
+                    # Run validation even on skipped fields to validate
+                    # 'required' and other attributes
+                    field_obj.validate(field_val)
                     continue
                 val = field_obj.__set_value__(self, field_val)
                 kwargs[field_name] = val
@@ -144,7 +148,7 @@ class Document(AttributeDict):
         return kwargs
 
     def _post_init_validation(self):
-        """Validate model after init
+        """Validate model after init with validate_%s extra methods
         """
         internals = dir(self)
         # NOTE: this can be done in the DocumentMeta

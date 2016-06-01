@@ -129,7 +129,13 @@ class SimpleField(object):
         return value
 
     def validate(self, value, err=ValidationError):
-        """Helper method to validate field.
+        """Main field validation method.
+
+        It runs several levels of validation:
+          * required attribute validation
+          * pre-validation
+          * validator chain
+          * choices validation if applied
 
         :param value: value to validate
         :param err: simplemodels.exceptions.ValidationError: class
@@ -149,7 +155,7 @@ class SimpleField(object):
         # Check choices if passed
         if self.choices:
             if value not in self.choices:
-                raise ValueError(
+                raise ValidationError(
                     'Value {} is restricted by choices: {}'.format(
                         value, self.choices))
         return value

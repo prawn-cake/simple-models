@@ -275,7 +275,7 @@ class DocumentTest(TestCase):
             level = CharField(choices=['INFO', 'DEBUG', 'ERROR'])
             text = CharField(max_length=500)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             # Put wrong log level
             message = LogMessage(level='FATAL', text='Test log message')
             self.assertIsNone(message)
@@ -441,6 +441,21 @@ class DocumentMetaOptionsTest(TestCase):
         user = User()
         self.assertEqual(user, {'role': 'admin'})
         self.assertEqual(user.role, 'admin')
+
+    def test_omit_missed_fields_with_required(self):
+        class User(Document):
+            name = CharField(required=True)
+            role = CharField()
+
+            class Meta:
+                OMIT_MISSED_FIELDS = True
+
+        with self.assertRaises(ValidationError):
+            user = User()
+            self.assertIsNone(user)
+
+        user = User(name='Mr.Robot')
+        self.assertEqual(user, {'name': 'Mr.Robot'})
 
 
 class ValidationTest(TestCase):
