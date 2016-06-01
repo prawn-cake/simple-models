@@ -4,10 +4,12 @@
 [![Coverage Status](https://coveralls.io/repos/prawn-cake/simple-models/badge.svg?branch=master&service=github)](https://coveralls.io/github/prawn-cake/simple-models?branch=master)
 ![PythonVersions](https://www.dropbox.com/s/ck0nc28ttga2pw9/python-2.7_3.4-blue.svg?dl=1)
 
-Simple models - it is:
+Simple models is a library allows to create validated dictionaries to increase predictability in your application.
 
-* Define API messages as models, in declarative way;
-* Validate API messages with familiar form-like way;
+Use cases:
+
+* Restrict API messages interactions, bring request and response to predictable data format
+* Any messages validation, very similar with well-known form features (django forms, wtforms, etc)
 * Work with data flexibly with dict-like structures;
 
 
@@ -171,6 +173,25 @@ For example let's validate length of admin password if the user is.
             
 **NOTE:** validation method must be static, have `validate_{field_name}` format and get 2 parameters: *document* and *value*             
 
+
+### Inheritance
+
+`Document` model supports inheritance. 
+Sometimes it turns out very handy to define base message class and define subclasses inherited from the base one
+
+    class BaseMessage(Document):
+        method_name = CharField(required=True)    
+        params = DictField(required=True)
+        
+        
+    class HttpRpcMessage(BaseMessage):
+        url = CharField(required=True)
+    
+    
+    class RabbitRpcMessage(BaseMessage):
+        amqp_headers = DictField(required=True)
+    
+        
 
 ## Run tests
 
