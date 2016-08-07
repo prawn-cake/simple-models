@@ -173,6 +173,31 @@ class FieldsTest(TestCase):
         p2 = Post()
         self.assertEqual(p2.tags, ['news'])
 
+    def test_list_field_of_documents(self):
+        class Comment(Document):
+            body = CharField()
+
+        class User(Document):
+            name = CharField()
+            comments = ListField([Comment, dict])
+
+        comments = [
+                {'body': 'comment #1'},
+                {'body': 'seconds comment'},
+                {'body': 'one more comment'},
+            ]
+        user = User(**{
+            'name': 'John Smith',
+            'comments': comments
+        })
+        self.assertIsInstance(user, User)
+        self.assertEqual(user.comments, comments)
+
+        comment = Comment(body='test comment')
+        user = User(name='John Smith', comments=[comment])
+        self.assertIsInstance(user, User)
+        self.assertEqual(user.comments, [{'body': 'test comment'}])
+
     def test_documents_list_field(self):
         class User(Document):
             name = CharField()

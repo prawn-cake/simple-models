@@ -76,6 +76,24 @@ class DocumentMeta(type):
         cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
         return cls
 
+    def __instancecheck__(cls, instance):
+        """Document instance check implementation.
+        It allows to do `isinstance(my_instance, MyDocument)`
+
+        :param instance: any data
+        :return: bool
+        """
+        # Instance data must be a dict or Document
+        cond = (isinstance(instance, dict),
+                issubclass(type(instance), Document))
+        if not any(cond):
+            return False
+        try:
+            cls(**instance)
+        except TypeError:
+            return False
+        return True
+
 
 @six.add_metaclass(DocumentMeta)
 class Document(AttributeDict):
@@ -87,6 +105,9 @@ class Document(AttributeDict):
 
         # if field is not passed to the constructor, exclude it from structure
         OMIT_MISSED_FIELDS = False
+
+        # TODO: it might make sense to add option to raise an error if unknown
+        # field is given for the document
 
     def __init__(self, **kwargs):
         kwargs = self._clean_kwargs(kwargs)
