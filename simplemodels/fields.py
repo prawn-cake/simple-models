@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import Mapping
 import copy
+import warnings
 from decimal import Decimal, InvalidOperation
 
 import six
@@ -299,7 +300,11 @@ class DocumentField(SimpleField):
 class ListField(SimpleField):
     """ List of items field"""
 
-    def __init__(self, of, **kwargs):
+    def __init__(self, of, item_types=None, **kwargs):
+        if item_types:
+            warnings.warn(
+                "%s 'item_types' is deprecated, use 'of' instead"
+                % self.__class__.__name__, DeprecationWarning)
         if not isinstance(of, (list, set, tuple)):
             raise ValueError(
                 'Wrong item_types data format, must be list, '
