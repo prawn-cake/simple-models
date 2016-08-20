@@ -25,7 +25,7 @@ class SimpleField(object):
     def __init__(self, default=None, required=False, choices=None, name=None,
                  validators=None, error_text='', immutable=False, **kwargs):
         """
-        :param name: optional name
+        :param name: field name, it's set in the DocumentMeta
         :param default: default value
         :param required: is field required
         :param choices: choices list.
@@ -322,6 +322,8 @@ class ListField(SimpleField):
             raise ValueError('\n'.join(errors))
 
         super(ListField, self).__init__(**kwargs)
+
+        self._set_default_value(kwargs.get('default', []))
 
     def _pre_validate(self, value, err=ValidationError):
         """Custom list field validate method

@@ -376,6 +376,31 @@ class DocumentTest(TestCase):
         user = User(name='Mikko', password='1234567890', is_admin=True)
         self.assertIsInstance(user, User)
 
+    def test_model_with_self_field(self):
+        class User(Document):
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
+
+            name = CharField()
+            self = CharField()
+            cls = CharField()
+
+        class Company(Document):
+            name = CharField()
+
+        data = {
+            'name': 'John Smith',
+            'self': 'Handsome',
+            'cls': 'So fresh, So clean clean',
+            'unused': 'foo/bar'
+        }
+
+        user = User.create(data)
+        self.assertIsInstance(user, User)
+        self.assertEqual(user, data)
+        company = Company.create(data)
+        self.assertIsInstance(company, Company)
+
 
 class DocumentMetaOptionsTest(TestCase):
     def test_nested_meta(self):

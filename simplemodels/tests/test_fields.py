@@ -153,6 +153,9 @@ class FieldsTest(TestCase):
             post = Post(text='test', tags=['a', 1, Decimal(1)])
             self.assertIsNone(post)
 
+        post = Post(text='text')
+        self.assertEqual(post.tags, [])
+
         post = Post(text='test', tags=['a', 1.0])
         self.assertTrue(post)
 

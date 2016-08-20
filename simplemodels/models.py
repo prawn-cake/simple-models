@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
+
 import six
 import inspect
+import weakref
 from simplemodels.exceptions import ImmutableDocumentError, \
     ModelValidationError
 from simplemodels.fields import SimpleField, DocumentField
 
 
 __all__ = ['Document', 'ImmutableDocument']
+
+
+registry = weakref.WeakValueDictionary()
 
 
 class AttributeDict(dict):
@@ -66,6 +71,7 @@ class DocumentMeta(type):
                 obj._name = field_name
                 obj._holder_name = name  # class holder name
                 _fields[obj.name] = obj
+
             elif all([field_name == 'Meta', inspect.isclass(obj)]):
                 _meta.update(obj.__dict__)
 
@@ -74,6 +80,7 @@ class DocumentMeta(type):
         dct['_meta'] = _meta
 
         cls = super(DocumentMeta, mcs).__new__(mcs, name, parents, dct)
+        registry[name] = cls
         return cls
 
     def __instancecheck__(cls, instance):
@@ -110,19 +117,32 @@ class Document(AttributeDict):
         # field is given for the document
 
     def __init__(self, **kwargs):
-        kwargs = self._clean_kwargs(kwargs)
+        # This flag set by .create(...) method
+        # kwargs = self._clean_kwargs(kwargs)
 
         # dict init
-        prepared_fields = self._prepare_fields(**kwargs)
+        prepared_fields = self._prepare_fields(kwargs)
         super(Document, self).__init__(**prepared_fields)
         self._post_init_validation()
 
-    def _prepare_fields(self, **kwargs):
+    def _prepare_fields(self, kwargs):
         """Do field validations and set defaults
 
         :param kwargs: init parameters
         :return: :raise RequiredValidationError:
         """
+
+        # prepare protected
+        prepared = {}
+        protect_prefix = '%s_' % self.__class__.__name__
+        for k, v in kwargs.items():
+            if k.startswith(protect_prefix):
+                k = k.replace(protect_prefix, '')
+                prepared[k] = v
+
+            # Do not override protected and decoded values
+            if k not in prepared:
+                prepared[k] = v
 
         # It validates values on set, see
         # simplemodels.fields.SimpleField#__set_value__
@@ -130,20 +150,20 @@ class Document(AttributeDict):
 
             # Get field value or set default
             default_val = getattr(field_obj, 'default')
-            field_val = kwargs.get(field_name)
+            field_val = prepared.get(field_name)
             if field_val is None:
                 field_val = default_val() if callable(default_val) \
                     else default_val
 
             # Build model structure
-            if field_name in kwargs:
+            if field_name in prepared:
                 # set presented field
                 val = field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = val
+                prepared[field_name] = val
             elif issubclass(type(field_obj), DocumentField):
                 # build empty nested document
                 val = field_obj.__set_value__(self, {})
-                kwargs[field_name] = val
+                prepared[field_name] = val
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta.OMIT_MISSED_FIELDS:
@@ -152,12 +172,18 @@ class Document(AttributeDict):
                     field_obj.validate(field_val)
                     continue
                 val = field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = val
+                prepared[field_name] = val
 
-        return kwargs
+        return prepared
 
     @classmethod
     def _clean_kwargs(cls, kwargs):
+        """Clean with excluding extra fields if the model has
+        ALLOW_EXTRA_FIELDS meta flag on
+
+        :param kwargs: dict
+        :return: cleaned kwargs
+        """
         fields = getattr(cls, '_fields', {})
 
         # put everything extra in the document
@@ -184,6 +210,25 @@ class Document(AttributeDict):
                     raise ModelValidationError(
                         '%s (%r) is not a function' %
                         (method_name, validation_method, ))
+
+    @classmethod
+    def _protect_fields(cls, kwargs):
+        """Rename all of the fields with ModelName_field.
+        This enables fields protection from 'self', 'cls' and other reserved
+        keywords
+        """
+        return {'%s_%s' % (cls.__name__, k): v for k, v in kwargs.items()}
+
+    @classmethod
+    def create(cls, kwargs):
+        """Safe factory method to create a document
+
+        :param kwargs:
+        :return:
+        """
+        kwargs = cls._clean_kwargs(kwargs)
+        protected = cls._protect_fields(kwargs)
+        return cls(**protected)
 
 
 class ImmutableDocument(Document):

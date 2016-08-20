@@ -1,162 +1,93 @@
 Changelog
 =========
 
-0.4.1 (2016-06-01)
+0.4.1+1 (UNRELEASED)
 --------------------
-* [Fix] Fix OMIT_MISSED_FIELDS behavior
+* [Improvement] Protected fields interface via Document.create(...)
+
+0.4.1 (2016-06-01)
+------------------
+* [Bugfix] Fix OMIT_MISSED_FIELDS behavior
 * [Improvement] Follow consistency and raise ValidationError instead of ValueError on choices validation if failed
 
-
 0.4.0 (2016-04-08)
---------------------
-
+------------------
 * [Feature] Implemented Document.Meta AttributeDict based options
 * [Improvement] Renamed Meta.OMIT_NOT_PASSED_FIELDS -> Meta.OMIT_MISSED_FIELDS
 * [Feature] Post-init model validation
 * [Feature] New DictField
 
-
 0.3.7 (2015-12-11)
------------------
-
+------------------
 * New SimpleField required attribute handling (moved to validate() method)
-
 * Implemented documents multiple inheritance
-
 * More wise fields descriptors setters strategy on init and on __setattr__
-
 * Split up SimpleField validation chain into several steps to adapt it
 * for better overriding in case of inheritance (cleaner ListField
 * implementation)
 
-
 0.3.6 (2015-12-11)
 ------------------
-
 * Fixed OMIT_NOT_PASSED_FIELDS to work with defaults
-
 * Updated SimpleField.required attribute handling;
 * Implemented models inheritance, refactoring DocumentMeta class;
 * Significant improvements in SimpleField.validate method - divide it into composition methods;
 
-
 0.3.5 (2015-12-10)
 ------------------
-
 * Fixed CharField max_length validator; fixed AttributeDict setter
-
 * Use common SimpleField value setter for descriptors and for Document init.
 * Updated CharField, forbid to store None value, store '' instead; Simplified Document init
 
-
 0.3.4 (2015-12-09)
 ------------------
-
 * Implemented Document.IGNORE_NONE_ON_INIT feature.
 * Code clean up and minor fixes
 
-
 0.3.3 (2015-11-26)
-------------------------
-
+------------------
 * Allow None values for non required fields. [Maksim Ekimovskii]
-
 * Code refactoring: moved helpers to utils.py, removed helpers.py, minor
-  renamings and clean up. [Maksim Ekimovskii]
-
 
 0.3.2 (2015-10-10)
 ------------------
-
 * Implement ListField, make it json serialize compatible for python2/3; Fixed
-  some of the bugs for default field value; Added experimental validator wrapper is_instance;
-  Raise AttributeError instead of KeyError for AttributeDict; [Maksim Ekimovskii]
-
 
 0.3.1 (2015-10-09)
 ------------------
-
 * Initialize callable default values at document init point; Added new
-  tests. [Maksim Ekimovskii]
-
 * Implemented ListField, added tests; Forbid mutable default parameters;
-  Remove redundant code. [Maksim Ekimovskii]
-
 
 0.3.0 (2015-09-27)
 ------------------
-
 * Implemented choices feature, removed redundant code, updated tests and
-  README. [Maksim Ekimovskii]
-
 
 0.2.5 (2015-09-19)
 ------------------
-
 * Implemented ALLOW_EXTRA_FIELDS document attribute; Improve python 3
-  compatibility. [Maksim Ekimovskii]
-
 * Fixed README. [Maksim Ekimovskii]
-
 * Implemented new validators pipeline; Added new immutable field option;
-  Fixed nested behaviour; Updated tests. [Maksim Ekimovskii]
-
 * Validate model defaults; Fixed working with nested models; Added
-  ImmutableDocument with immutable fields; Code refactoring: rename
-  DictEmbeddedDocument --> Document with backward compatibility; Added
-  unittests. [Maksim Ekimovskii]
-
 * Replace SimpleField get_name() with property name. [Maksim Ekimovskii]
-
 * Remove get_instance constructor; Fixed tests. [Maksim Ekimovskii]
-
 * Code refactoring, remove deprecated type parameter from SimpleField;
-  Added typed field types: IntegerField, Float, etc; Optimize
-  validations; Added tests. [Maksim Ekimovskii]
-
 
 0.2.4 (2015-04-25)
 ------------------
-
 * Implemented new feature - optional SimpleField name; Added tests;
-  Minor fixes; Refactoring. [Maksim Ekimovskii]
-
 * Exception refactoring. [Maksim Ekimovskii]
-
 * Added new field attribute 'error_text' to help to debug validation
-  error messages; Distinguish default values whether callable or not;
-  Minor refactoring; [Maksim Ekimovskii]
-
 * Fixed DictEmbeddedDocument set default functionality + validation;
-  Updated tests. [Maksim Ekimovskii]
-
 * Integrate six lib to python 2 to 3 compatibility. [Maksim Ekimovskii]
-
 
 0.2.1 (2015-02-12)
 ------------------
-
 * Updated docs; added test_coverage make commandl updated travis cfg.
-  [Maksim Ekimovskii]
-
 * Added new SimpleField validator feature -> it will be replace 'type'
-  parameter; Updated meta models, added field holder name; Splitted
-  validation, moved it to SimpleField.validator; Added new tests;
-  Refactoring, cleanup and docstrings coverage. [Maksim Ekimovskii]
-
 * Added strip_kwargs method for DictEmbeddedDocument. [Maksim
-  Ekimovskii]
-
 * Models refactoring, improve readability; added .coveragerc. [Maksim
-  Ekimovskii]
-
 * Rename _type -> type SimpleField attribute. [Maksim Ekimovskii]
-
 * Fix DictEmbeddedDocument type casting; Updated tests; Updated
-  documentation. [Maksim Ekimovskii]
-
 * Updated validators, integrate it to field setter and document
-  initializator. [Maksim Ekimovskii]
-
 * Rewritten field storage logic to prevent memory leaks, store all
-  instance values in __dict__ [Maksim Ekimovskii]
+
