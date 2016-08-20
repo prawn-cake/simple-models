@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.4.1+1 (UNRELEASED)
+0.5.0 (2016-08-20)
 --------------------
 * [Improvement] Protected fields interface via Document.create(...)
 * [Improvement] Added ListField list of Documents support
