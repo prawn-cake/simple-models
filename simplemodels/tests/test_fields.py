@@ -290,10 +290,14 @@ class FieldsAttributesTest(TestCase):
             self.assertEqual(doc.test_field, test_value)
 
             # Test required error case
-            with self.assertRaises(FieldRequiredError) as err:
+            if issubclass(field_cls, ListField):
                 doc = MyDocument()
-                self.assertIsNone(doc)
-                self.assertIn('Field test_field is required', str(err))
+                self.assertEqual(doc, {'test_field': []})
+            else:
+                with self.assertRaises(FieldRequiredError) as err:
+                    doc = MyDocument()
+                    self.assertIsNone(doc)
+                    self.assertIn('Field test_field is required', str(err))
 
     def test_default(self):
         for field_cls, test_value, kwargs in self.fields:
