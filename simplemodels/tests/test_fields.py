@@ -6,7 +6,7 @@ import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
-    FieldRequiredError
+    FieldRequiredError, ModelNotFoundError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
     BooleanField, CharField, DocumentField, ListField, SimpleField, DictField
 from simplemodels.models import Document
@@ -141,7 +141,7 @@ class FieldsTest(TestCase):
     def test_list_field(self):
         class Post(Document):
             text = CharField()
-            tags = ListField(item_types=[str, float])
+            tags = ListField(of=[str, float])
 
         # Test wrong tags type, must be list of items
         with self.assertRaises(ValidationError):
@@ -152,6 +152,9 @@ class FieldsTest(TestCase):
         with self.assertRaises(ValidationError):
             post = Post(text='test', tags=['a', 1, Decimal(1)])
             self.assertIsNone(post)
+
+        post = Post(text='text')
+        self.assertEqual(post.tags, [])
 
         post = Post(text='test', tags=['a', 1.0])
         self.assertTrue(post)
@@ -165,13 +168,38 @@ class FieldsTest(TestCase):
     def test_list_field_defaults(self):
         class Post(Document):
             text = CharField()
-            tags = ListField(item_types=[str], default=['news'])
+            tags = ListField(of=[str], default=['news'])
 
         p1 = Post()
         p1.tags.append('sport')
         self.assertEqual(p1.tags, ['news', 'sport'])
         p2 = Post()
         self.assertEqual(p2.tags, ['news'])
+
+    def test_list_field_of_documents(self):
+        class Comment(Document):
+            body = CharField()
+
+        class User(Document):
+            name = CharField()
+            comments = ListField([Comment, dict])
+
+        comments = [
+                {'body': 'comment #1'},
+                {'body': 'seconds comment'},
+                {'body': 'one more comment'},
+            ]
+        user = User(**{
+            'name': 'John Smith',
+            'comments': comments
+        })
+        self.assertIsInstance(user, User)
+        self.assertEqual(user.comments, comments)
+
+        comment = Comment(body='test comment')
+        user = User(name='John Smith', comments=[comment])
+        self.assertIsInstance(user, User)
+        self.assertEqual(user.comments, [{'body': 'test comment'}])
 
     def test_documents_list_field(self):
         class User(Document):
@@ -244,7 +272,7 @@ class FieldsAttributesTest(TestCase):
             (IntegerField, 101, {}),
             (FloatField, 999.998, {}),
             (BooleanField, True, {}),
-            (ListField, ['a', 1, 2.0], {'item_types': [str, int, float]}),
+            (ListField, ['a', 1, 2.0], {'of': [str, int, float]}),
             (DecimalField, Decimal('47'), {}),
             (DictField, {'answer': 42}, {}),
             # (DocumentField, {'name': 'Maks'}, {'model': User})
@@ -262,10 +290,14 @@ class FieldsAttributesTest(TestCase):
             self.assertEqual(doc.test_field, test_value)
 
             # Test required error case
-            with self.assertRaises(FieldRequiredError) as err:
+            if issubclass(field_cls, ListField):
                 doc = MyDocument()
-                self.assertIsNone(doc)
-                self.assertIn('Field test_field is required', str(err))
+                self.assertEqual(doc, {'test_field': []})
+            else:
+                with self.assertRaises(FieldRequiredError) as err:
+                    doc = MyDocument()
+                    self.assertIsNone(doc)
+                    self.assertIn('Field test_field is required', str(err))
 
     def test_default(self):
         for field_cls, test_value, kwargs in self.fields:
@@ -282,3 +314,24 @@ class FieldsAttributesTest(TestCase):
 
             doc = MyDocument()
             self.assertEqual(doc.test_field, test_value)
+
+
+class DocumentFieldTest(TestCase):
+    def test_str_model_lookup(self):
+        class Address(Document):
+            street = CharField()
+
+        class User(Document):
+            address = DocumentField(model='Address')
+
+        user = User.create({'address': {'street': 'Morison street'}})
+        self.assertEqual(user.address.street, 'Morison street')
+
+    def test_str_model_lookup_error(self):
+        class User(Document):
+            address = DocumentField(model='Address1')
+
+        with self.assertRaises(ModelNotFoundError) as err:
+            user = User.create({'address': {'street': 'Morison street'}})
+            self.assertIsNone(user)
+            self.assertIn("Model 'Address1' does not exist", err)

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from collections import Mapping
 import copy
+import warnings
 from decimal import Decimal, InvalidOperation
 
 import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, DefaultValueError, \
-    ImmutableFieldError, FieldRequiredError
+    ImmutableFieldError, FieldRequiredError, ModelNotFoundError
 from simplemodels.utils import is_document
 
 
@@ -25,7 +26,7 @@ class SimpleField(object):
     def __init__(self, default=None, required=False, choices=None, name=None,
                  validators=None, error_text='', immutable=False, **kwargs):
         """
-        :param name: optional name
+        :param name: field name, it's set in the DocumentMeta
         :param default: default value
         :param required: is field required
         :param choices: choices list.
@@ -116,8 +117,14 @@ class SimpleField(object):
 
     def _validate_required(self, value):
         if self.required:
-            if value is None or value == '':
-                raise FieldRequiredError('Field %s is required' % self.name)
+            if value is None:
+                raise FieldRequiredError(
+                    "Field '%(name)s' is required: {%(name)r: %(value)r}"
+                    % {'name': self.name, 'value': value})
+            elif value == '':
+                raise FieldRequiredError(
+                    "Field '%(name)s' is empty: {%(name)r: %(value)r}"
+                    % {'name': self.name, 'value': value})
 
     def _pre_validate(self, value, err=ValidationError):
         """One of the validation chain method.
@@ -161,7 +168,7 @@ class SimpleField(object):
         return value
 
     @staticmethod
-    def _add_default_validator(validator, kwargs):
+    def _set_default_validator(validator, kwargs):
         """Helper method to add default validator used in subclasses
 
         :param kwargs: dict: field init key-value arguments
@@ -216,19 +223,19 @@ class SimpleField(object):
 
 class IntegerField(SimpleField):
     def __init__(self, **kwargs):
-        self._add_default_validator(int, kwargs)
+        self._set_default_validator(int, kwargs)
         super(IntegerField, self).__init__(**kwargs)
 
 
 class FloatField(SimpleField):
     def __init__(self, **kwargs):
-        self._add_default_validator(float, kwargs)
+        self._set_default_validator(float, kwargs)
         super(FloatField, self).__init__(**kwargs)
 
 
 class DecimalField(SimpleField):
     def __init__(self, **kwargs):
-        self._add_default_validator(Decimal, kwargs)
+        self._set_default_validator(Decimal, kwargs)
         super(DecimalField, self).__init__(**kwargs)
 
 
@@ -239,7 +246,7 @@ class CharField(SimpleField):
         else:
             validator = str
 
-        self._add_default_validator(validator, kwargs)
+        self._set_default_validator(validator, kwargs)
 
         # Add max length validator
         if max_length:
@@ -251,7 +258,7 @@ class CharField(SimpleField):
                 return value
 
             self.max_length = max_length
-            self._add_default_validator(
+            self._set_default_validator(
                 validator=validate_max_length,
                 kwargs=kwargs)
 
@@ -269,7 +276,7 @@ class CharField(SimpleField):
 
 class BooleanField(SimpleField):
     def __init__(self, **kwargs):
-        self._add_default_validator(bool, kwargs)
+        self._set_default_validator(bool, kwargs)
         super(BooleanField, self).__init__(**kwargs)
 
 
@@ -282,23 +289,38 @@ class DocumentField(SimpleField):
             url = CharField()
 
         class User(Document)
-            website = DocumentField(model=Website)
+            website = DocumentField(model=Website)  # or model='Website'
     """
 
     def __init__(self, model, **kwargs):
-        self._add_default_validator(model, kwargs)
+        if isinstance(model, str):
+            def model_validator(kwargs):
+                from simplemodels.models import registry
+                registry_model = registry.get(model)
+                if not registry_model:
+                    raise ModelNotFoundError(
+                        "Model '%s' does not exist" % model)
+                return registry_model.create(kwargs)
+        else:
+            model_validator = model
+
+        self._set_default_validator(model_validator, kwargs)
         super(DocumentField, self).__init__(**kwargs)
 
 
 class ListField(SimpleField):
     """ List of items field"""
 
-    def __init__(self, item_types, **kwargs):
-        if not isinstance(item_types, (list, set, tuple)):
+    def __init__(self, of, item_types=None, **kwargs):
+        if item_types:
+            warnings.warn(
+                "%s 'item_types' is deprecated, use 'of' instead"
+                % self.__class__.__name__, DeprecationWarning)
+        if not isinstance(of, (list, set, tuple)):
             raise ValueError(
                 'Wrong item_types data format, must be list, '
-                'set or tuple, given {}'.format(type(item_types)))
-        self._add_default_validator(list, kwargs)
+                'set or tuple, given {}'.format(type(of)))
+        self._set_default_validator(list, kwargs)
 
         # list of possible item instances, for example: [str, int, float]
         # NOTE: unicode value will be accepted for `str` type
@@ -306,7 +328,7 @@ class ListField(SimpleField):
 
         # Item type must be callable
         errors = []
-        for t in item_types:
+        for t in of:
             if callable(t):
                 self._item_types.append(t)
             else:
@@ -317,6 +339,8 @@ class ListField(SimpleField):
 
         super(ListField, self).__init__(**kwargs)
 
+        self._set_default_value(kwargs.get('default', []))
+
     def _pre_validate(self, value, err=ValidationError):
         """Custom list field validate method
 
@@ -325,26 +349,32 @@ class ListField(SimpleField):
         :return: :raise err:
         """
 
-        items_list = value
-        if not isinstance(items_list, list):
+        values_list = value
+        if not isinstance(values_list, list):
             raise err('Wrong values type {}, must be a list'.format(
-                type(items_list)))
+                type(values_list)))
 
         errors = []
         types = tuple(self._item_types)
-        for item in items_list:
+
+        # NOTE: treat unicode as a str type for py2, if an user passed a str,
+        # we will be polite and accept unicode as well.
+        # For py3 this will be equal by design
+        if PYTHON_VERSION == 2 and str in types:
+            types += unicode,
+
+        error_msg = 'List value {val} has wrong type ({err_type}), ' \
+                    'must be one of {types}'
+        for item in values_list:
             if not isinstance(item, types):
-                # Unicode hook for python 2, accept unicode type as a str value
-                if PYTHON_VERSION == 2 and str in types:
-                    if isinstance(item, unicode):
-                        continue
-                errors.append(
-                    'List value {} has wrong type ({}), must be one of '
-                    '{}'.format(item, type(item).__name__, self._item_types))
+                msg = error_msg.format(val=item,
+                                       err_type=type(item).__name__,
+                                       types=types)
+                errors.append(msg)
 
         if errors:
             raise err('\n'.join(errors))
-        return items_list
+        return values_list
 
 
 class DictField(SimpleField):
@@ -355,7 +385,7 @@ class DictField(SimpleField):
         if not issubclass(dict_cls, Mapping):
             raise ValueError("Wrong dict_cls parameter '%r'. "
                              "Must be Mapping" % dict_cls)
-        self._add_default_validator(dict_cls, kwargs)
+        self._set_default_validator(dict_cls, kwargs)
         super(DictField, self).__init__(**kwargs)
 
     def __getitem__(self, item):

@@ -8,7 +8,8 @@ from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     DefaultValueError, ImmutableDocumentError, ModelValidationError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
-from simplemodels.models import AttributeDict, Document, ImmutableDocument
+from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
+    registry
 
 
 class AttributeDictTest(TestCase):
@@ -376,6 +377,31 @@ class DocumentTest(TestCase):
         user = User(name='Mikko', password='1234567890', is_admin=True)
         self.assertIsInstance(user, User)
 
+    def test_model_with_self_field(self):
+        class User(Document):
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
+
+            name = CharField()
+            self = CharField()
+            cls = CharField()
+
+        class Company(Document):
+            name = CharField()
+
+        data = {
+            'name': 'John Smith',
+            'self': 'Handsome',
+            'cls': 'So fresh, So clean clean',
+            'unused': 'foo/bar'
+        }
+
+        user = User.create(data)
+        self.assertIsInstance(user, User)
+        self.assertEqual(user, data)
+        company = Company.create(data)
+        self.assertIsInstance(company, Company)
+
 
 class DocumentMetaOptionsTest(TestCase):
     def test_nested_meta(self):
@@ -538,7 +564,7 @@ class JsonValidationTest(TestCase):
             address = DocumentField(model=Address)
             is_married = BooleanField(default=False)
             social_networks = ListField(
-                item_types=[str], default=['facebook.com', 'google.com'])
+                of=[str], default=['facebook.com', 'google.com'])
 
         self.user_cls = User
         self.user = User()
@@ -576,3 +602,12 @@ class JsonValidationTest(TestCase):
 
         post_3 = Post(owner_id=None)
         self.assertIsNone(post_3.owner_id)
+
+
+class RegistryTest(TestCase):
+    def test_registry(self):
+        class User(Document):
+            pass
+
+        self.assertIn('User', registry)
+        self.assertIs(registry['User'], User)

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import six
-
 
 __all__ = [
     'ValidationError',
@@ -17,7 +15,12 @@ class ValidationError(Exception):
     """ Custom exception class. Useful for validation methods """
 
     def __str__(self):
-        return six.u(self.message)
+        return self.message
+
+
+class ModelNotFoundError(ValidationError):
+    """Raises when DocumentField has wrong model assignment"""
+    pass
 
 
 class ModelValidationError(ValidationError):
