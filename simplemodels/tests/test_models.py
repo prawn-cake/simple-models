@@ -8,7 +8,8 @@ from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     DefaultValueError, ImmutableDocumentError, ModelValidationError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
-from simplemodels.models import AttributeDict, Document, ImmutableDocument
+from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
+    registry
 
 
 class AttributeDictTest(TestCase):
@@ -601,3 +602,12 @@ class JsonValidationTest(TestCase):
 
         post_3 = Post(owner_id=None)
         self.assertIsNone(post_3.owner_id)
+
+
+class RegistryTest(TestCase):
+    def test_registry(self):
+        class User(Document):
+            pass
+
+        self.assertIn('User', registry)
+        self.assertIs(registry['User'], User)

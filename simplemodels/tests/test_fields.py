@@ -6,7 +6,7 @@ import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
-    FieldRequiredError
+    FieldRequiredError, ModelNotFoundError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
     BooleanField, CharField, DocumentField, ListField, SimpleField, DictField
 from simplemodels.models import Document
@@ -314,3 +314,24 @@ class FieldsAttributesTest(TestCase):
 
             doc = MyDocument()
             self.assertEqual(doc.test_field, test_value)
+
+
+class DocumentFieldTest(TestCase):
+    def test_str_model_lookup(self):
+        class Address(Document):
+            street = CharField()
+
+        class User(Document):
+            address = DocumentField(model='Address')
+
+        user = User.create({'address': {'street': 'Morison street'}})
+        self.assertEqual(user.address.street, 'Morison street')
+
+    def test_str_model_lookup_error(self):
+        class User(Document):
+            address = DocumentField(model='Address1')
+
+        with self.assertRaises(ModelNotFoundError) as err:
+            user = User.create({'address': {'street': 'Morison street'}})
+            self.assertIsNone(user)
+            self.assertIn("Model 'Address1' does not exist", err)

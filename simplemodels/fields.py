@@ -8,7 +8,7 @@ import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, DefaultValueError, \
-    ImmutableFieldError, FieldRequiredError
+    ImmutableFieldError, FieldRequiredError, ModelNotFoundError
 from simplemodels.utils import is_document
 
 
@@ -289,11 +289,22 @@ class DocumentField(SimpleField):
             url = CharField()
 
         class User(Document)
-            website = DocumentField(model=Website)
+            website = DocumentField(model=Website)  # or model='Website'
     """
 
     def __init__(self, model, **kwargs):
-        self._set_default_validator(model, kwargs)
+        if isinstance(model, str):
+            def model_validator(kwargs):
+                from simplemodels.models import registry
+                registry_model = registry.get(model)
+                if not registry_model:
+                    raise ModelNotFoundError(
+                        "Model '%s' does not exist" % model)
+                return registry_model.create(kwargs)
+        else:
+            model_validator = model
+
+        self._set_default_validator(model_validator, kwargs)
         super(DocumentField, self).__init__(**kwargs)
 
 

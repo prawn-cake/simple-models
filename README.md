@@ -95,7 +95,36 @@ To disable this behaviour **(not recommended)**, pass `is_unicode=False` field p
     >>> isinstance(user.name, unicode), isinstance(user.name, str) 
     >>> False, True
 
-            
+#### DocumentField
+
+Allows to define nested structures for being validated
+
+There are 3 forms to assign a nested model to its' parent
+
+    #1. Different models with proper definition order. Keep in mind to define nested model before main one
+    
+    class Address(Document):
+        street = CharField()
+
+    class User(Document):
+        address = DocumentField(model=Address)
+    
+    
+    #2. Nested modelling - good for keeping "incapsulation"
+    
+    class User(Document):
+        class _Address(Document):
+            street = CharField()
+        address = DocumentField(model=_Address)
+        
+    
+    #3. Lazy model assignment with name. Model evaluation happens on validation step, it nicely solves ordering restriction in #1 
+    ...
+    
+    class User(Document):
+        address = DocumentField(model='Address')
+    
+
 #### ListField
 
 Allows you to define list of items

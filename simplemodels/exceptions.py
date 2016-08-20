@@ -18,6 +18,11 @@ class ValidationError(Exception):
         return self.message
 
 
+class ModelNotFoundError(ValidationError):
+    """Raises when DocumentField has wrong model assignment"""
+    pass
+
+
 class ModelValidationError(ValidationError):
     """User-defined exception. Raised when post model validation is failed"""
     pass

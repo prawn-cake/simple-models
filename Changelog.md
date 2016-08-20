@@ -4,6 +4,8 @@ Changelog
 0.4.1+1 (UNRELEASED)
 --------------------
 * [Improvement] Protected fields interface via Document.create(...)
+* [Improvement] Added ListField list of Documents support
+* [Improvement] DocumentField: added lazy model assignment with name
 
 0.4.1 (2016-06-01)
 ------------------
