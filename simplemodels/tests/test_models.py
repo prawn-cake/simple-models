@@ -563,7 +563,7 @@ class JsonValidationTest(TestCase):
             address = DocumentField(model=Address)
             is_married = BooleanField(default=False)
             social_networks = ListField(
-                item_types=[str], default=['facebook.com', 'google.com'])
+                of=[str], default=['facebook.com', 'google.com'])
 
         self.user_cls = User
         self.user = User()

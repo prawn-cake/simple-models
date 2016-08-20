@@ -299,11 +299,11 @@ class DocumentField(SimpleField):
 class ListField(SimpleField):
     """ List of items field"""
 
-    def __init__(self, item_types, **kwargs):
-        if not isinstance(item_types, (list, set, tuple)):
+    def __init__(self, of, **kwargs):
+        if not isinstance(of, (list, set, tuple)):
             raise ValueError(
                 'Wrong item_types data format, must be list, '
-                'set or tuple, given {}'.format(type(item_types)))
+                'set or tuple, given {}'.format(type(of)))
         self._set_default_validator(list, kwargs)
 
         # list of possible item instances, for example: [str, int, float]
@@ -312,7 +312,7 @@ class ListField(SimpleField):
 
         # Item type must be callable
         errors = []
-        for t in item_types:
+        for t in of:
             if callable(t):
                 self._item_types.append(t)
             else:

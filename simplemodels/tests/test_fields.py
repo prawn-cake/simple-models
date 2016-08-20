@@ -141,7 +141,7 @@ class FieldsTest(TestCase):
     def test_list_field(self):
         class Post(Document):
             text = CharField()
-            tags = ListField(item_types=[str, float])
+            tags = ListField(of=[str, float])
 
         # Test wrong tags type, must be list of items
         with self.assertRaises(ValidationError):
@@ -168,7 +168,7 @@ class FieldsTest(TestCase):
     def test_list_field_defaults(self):
         class Post(Document):
             text = CharField()
-            tags = ListField(item_types=[str], default=['news'])
+            tags = ListField(of=[str], default=['news'])
 
         p1 = Post()
         p1.tags.append('sport')
@@ -272,7 +272,7 @@ class FieldsAttributesTest(TestCase):
             (IntegerField, 101, {}),
             (FloatField, 999.998, {}),
             (BooleanField, True, {}),
-            (ListField, ['a', 1, 2.0], {'item_types': [str, int, float]}),
+            (ListField, ['a', 1, 2.0], {'of': [str, int, float]}),
             (DecimalField, Decimal('47'), {}),
             (DictField, {'answer': 42}, {}),
             # (DocumentField, {'name': 'Maks'}, {'model': User})

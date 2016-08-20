@@ -20,7 +20,7 @@ class User(Document):
         validators=[lambda value: datetime.strptime(value, '%Y-%m-%d')])
     balance = fields.DecimalField(default=0)
     extra_info = fields.SimpleField()
-    tags = fields.ListField(item_types=[str])
+    tags = fields.ListField(of=[str])
 
     @staticmethod
     def validate_password(document, value):

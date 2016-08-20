@@ -117,8 +117,8 @@ class Document(AttributeDict):
         # field is given for the document
 
     def __init__(self, **kwargs):
-        # This flag set by .create(...) method
-        # kwargs = self._clean_kwargs(kwargs)
+        kwargs = self._unprotect_fields(kwargs)
+        kwargs = self._clean_kwargs(kwargs)
 
         # dict init
         prepared_fields = self._prepare_fields(kwargs)
@@ -132,38 +132,25 @@ class Document(AttributeDict):
         :return: :raise RequiredValidationError:
         """
 
-        # prepare protected
-        prepared = {}
-        protect_prefix = '%s_' % self.__class__.__name__
-        for k, v in kwargs.items():
-            if k.startswith(protect_prefix):
-                k = k.replace(protect_prefix, '')
-                prepared[k] = v
-
-            # Do not override protected and decoded values
-            if k not in prepared:
-                prepared[k] = v
-
-        # It validates values on set, see
-        # simplemodels.fields.SimpleField#__set_value__
+        # It validates values on set, check fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
 
             # Get field value or set default
             default_val = getattr(field_obj, 'default')
-            field_val = prepared.get(field_name)
+            field_val = kwargs.get(field_name)
             if field_val is None:
                 field_val = default_val() if callable(default_val) \
                     else default_val
 
             # Build model structure
-            if field_name in prepared:
+            if field_name in kwargs:
                 # set presented field
                 val = field_obj.__set_value__(self, field_val)
-                prepared[field_name] = val
+                kwargs[field_name] = val
             elif issubclass(type(field_obj), DocumentField):
                 # build empty nested document
                 val = field_obj.__set_value__(self, {})
-                prepared[field_name] = val
+                kwargs[field_name] = val
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta.OMIT_MISSED_FIELDS:
@@ -172,9 +159,9 @@ class Document(AttributeDict):
                     field_obj.validate(field_val)
                     continue
                 val = field_obj.__set_value__(self, field_val)
-                prepared[field_name] = val
+                kwargs[field_name] = val
 
-        return prepared
+        return kwargs
 
     @classmethod
     def _clean_kwargs(cls, kwargs):
@@ -220,13 +207,28 @@ class Document(AttributeDict):
         return {'%s_%s' % (cls.__name__, k): v for k, v in kwargs.items()}
 
     @classmethod
+    def _unprotect_fields(cls, kwargs):
+        """Reverse of protect fields + backward compatible with old init style.
+
+        """
+        protect_prefix = '%s_' % cls.__name__
+        unprotected = {}
+        for k, v in kwargs.items():
+            if k.startswith(protect_prefix):
+                k = k.replace(protect_prefix, '')
+                unprotected[k] = v
+
+            # Do not override protected and decoded values
+            if k not in unprotected:
+                unprotected[k] = v
+        return unprotected
+
+    @classmethod
     def create(cls, kwargs):
         """Safe factory method to create a document
 
-        :param kwargs:
-        :return:
+        :return: document instance
         """
-        kwargs = cls._clean_kwargs(kwargs)
         protected = cls._protect_fields(kwargs)
         return cls(**protected)
 
