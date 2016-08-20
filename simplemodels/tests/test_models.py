@@ -385,6 +385,7 @@ class DocumentTest(TestCase):
             name = CharField()
             self = CharField()
             cls = CharField()
+            User_ = CharField()
 
         class Company(Document):
             name = CharField()
@@ -393,7 +394,8 @@ class DocumentTest(TestCase):
             'name': 'John Smith',
             'self': 'Handsome',
             'cls': 'So fresh, So clean clean',
-            'unused': 'foo/bar'
+            'unused': 'foo/bar',
+            'User_': 'X'
         }
 
         user = User.create(data)

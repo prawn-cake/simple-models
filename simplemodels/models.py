@@ -215,7 +215,7 @@ class Document(AttributeDict):
         unprotected = {}
         for k, v in kwargs.items():
             if k.startswith(protect_prefix):
-                k = k.replace(protect_prefix, '')
+                k = k.replace(protect_prefix, '', 1)
                 unprotected[k] = v
 
             # Do not override protected and decoded values
