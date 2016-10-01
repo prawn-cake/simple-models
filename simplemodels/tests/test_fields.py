@@ -138,69 +138,6 @@ class FieldsTest(TestCase):
             self.assertEqual(user.system_id, 0)
             self.assertIn('User.system_id field is immutable', err)
 
-    def test_list_field(self):
-        class Post(Document):
-            text = CharField()
-            tags = ListField(of=[str, float])
-
-        # Test wrong tags type, must be list of items
-        with self.assertRaises(ValidationError):
-            post = Post(text='test', tags='Tags')
-            self.assertIsNone(post)
-
-        # Test wrong list item type, int is not accepted for Post
-        with self.assertRaises(ValidationError):
-            post = Post(text='test', tags=['a', 1, Decimal(1)])
-            self.assertIsNone(post)
-
-        post = Post(text='text')
-        self.assertEqual(post.tags, [])
-
-        post = Post(text='test', tags=['a', 1.0])
-        self.assertTrue(post)
-
-        # Test setter validation
-        with self.assertRaises(ValidationError):
-            post.tags = [Decimal(1)]
-            # NOTE: This doesn't work
-            # post.tags.append(123)
-
-    def test_list_field_defaults(self):
-        class Post(Document):
-            text = CharField()
-            tags = ListField(of=[str], default=['news'])
-
-        p1 = Post()
-        p1.tags.append('sport')
-        self.assertEqual(p1.tags, ['news', 'sport'])
-        p2 = Post()
-        self.assertEqual(p2.tags, ['news'])
-
-    def test_list_field_of_documents(self):
-        class Comment(Document):
-            body = CharField()
-
-        class User(Document):
-            name = CharField()
-            comments = ListField([Comment, dict])
-
-        comments = [
-                {'body': 'comment #1'},
-                {'body': 'seconds comment'},
-                {'body': 'one more comment'},
-            ]
-        user = User(**{
-            'name': 'John Smith',
-            'comments': comments
-        })
-        self.assertIsInstance(user, User)
-        self.assertEqual(user.comments, comments)
-
-        comment = Comment(body='test comment')
-        user = User(name='John Smith', comments=[comment])
-        self.assertIsInstance(user, User)
-        self.assertEqual(user.comments, [{'body': 'test comment'}])
-
     def test_documents_list_field(self):
         class User(Document):
             name = CharField()
@@ -272,7 +209,7 @@ class FieldsAttributesTest(TestCase):
             (IntegerField, 101, {}),
             (FloatField, 999.998, {}),
             (BooleanField, True, {}),
-            (ListField, ['a', 1, 2.0], {'of': [str, int, float]}),
+            (ListField, [1, 2.0], {'of': float}),
             (DecimalField, Decimal('47'), {}),
             (DictField, {'answer': 42}, {}),
             # (DocumentField, {'name': 'Maks'}, {'model': User})
@@ -335,3 +272,118 @@ class DocumentFieldTest(TestCase):
             user = User.create({'address': {'street': 'Morison street'}})
             self.assertIsNone(user)
             self.assertIn("Model 'Address1' does not exist", err)
+
+
+class ListFieldTest(TestCase):
+    def test_base(self):
+        class Post(Document):
+            text = CharField()
+            tags = ListField(of=float)
+
+        # Test wrong tags type, must be list of items
+        with self.assertRaises(ValidationError):
+            post = Post(text='test', tags='Tags')
+            self.assertIsNone(post)
+
+        # Test wrong list item type, int is not accepted for Post
+        with self.assertRaises(ValidationError):
+            post = Post(text='test', tags=['a', 1, Decimal(1)])
+            self.assertIsNone(post)
+
+        post = Post(text='text')
+        self.assertEqual(post.tags, [])
+
+        post = Post(text='test', tags=[2, 1.0])
+        self.assertIsInstance(post, Post)
+        self.assertEqual(post.tags, [2.0, 1.0])
+
+        post.tags.append(3)
+        self.assertEqual(post.tags, [2.0, 1.0, 3.0])
+        self.assertEqual(post.tags[:], [2.0, 1.0, 3.0])
+        self.assertEqual(post.tags[-1], 3.0)
+
+    def test_assign_list_value(self):
+        class Post(Document):
+            text = CharField()
+            tags = ListField(of=float)
+
+        post = Post(text='test', tags=[2, 1.0])
+        # NOTE: it's ok cuz float(Decimal('1.1')) works fine
+        post.tags = [Decimal('1.1')]
+        self.assertEqual(post.tags, [1.1])
+
+        with self.assertRaises(ValidationError):
+            post.tags = ['string value']
+
+        post.tags.append(123)
+        self.assertEqual(post.tags, [1.1, 123])
+
+        # with self.assertRaises(ValidationError):
+        #     post.tags.append('abc')
+
+    def test_collection_methods(self):
+        class Comment(Document):
+            text = CharField()
+
+        class Post(Document):
+            text = CharField()
+            comments = ListField(of=Comment)
+
+        post = Post.create({'text': 'my post',
+                            'comments': [
+                                {'text': 'Comment #1'},
+                                {'text': 'Comment #2'}]
+                            })
+        self.assertEqual(len(post.comments), 2)
+        self.assertEqual(len(post.comments[:]), 2)
+        self.assertEqual(post.comments[0].text, 'Comment #1')
+        self.assertEqual(post.comments[1:], [{'text': 'Comment #2'}])
+
+    def test_defaults(self):
+        class Post(Document):
+            text = CharField()
+            tags = ListField(of=str, default=['news'])
+
+        p1 = Post()
+        p1.tags.append('sport')
+        self.assertEqual(p1.tags, ['news', 'sport'])
+        p2 = Post()
+        self.assertEqual(p2.tags, ['news'])
+
+    def test_default_empty(self):
+        class Post(Document):
+            text = CharField()
+            tags = ListField(of=str, required=True)
+
+        p = Post.create({})
+        self.assertEqual(p.tags, [])
+        self.assertEqual(p, {'text': '', 'tags': []})
+
+    def test_list_field_of_documents(self):
+        class Comment(Document):
+            body = CharField()
+
+        class User(Document):
+            name = CharField()
+            comments = ListField(of=Comment)
+
+        comments = [
+                {'body': 'comment #1'},
+                {'body': 'seconds comment'},
+                {'body': 'one more comment'},
+            ]
+        user = User.create({
+            'name': 'John Smith',
+            'comments': comments
+        })
+
+        self.assertIsInstance(user, User)
+        self.assertEqual(user.comments, comments)
+        for comment in user.comments:
+            self.assertTrue(comment.body)
+            self.assertIsInstance(comment, Comment)
+
+        comment = Comment(body='test comment')
+        user = User(name='John Smith', comments=[comment])
+        self.assertIsInstance(user, User)
+        self.assertEqual(user.comments, [{'body': 'test comment'}])

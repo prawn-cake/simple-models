@@ -113,6 +113,7 @@ class DocumentTest(TestCase):
         td.is_read = True
         td_2.is_read = False
         self.assertTrue(td.is_read)
+        self.assertTrue(td['is_read'])
         self.assertFalse(td_2.is_read)
 
     def test_default_values_init(self):
@@ -385,6 +386,7 @@ class DocumentTest(TestCase):
             name = CharField()
             self = CharField()
             cls = CharField()
+            User_ = CharField()
 
         class Company(Document):
             name = CharField()
@@ -393,7 +395,8 @@ class DocumentTest(TestCase):
             'name': 'John Smith',
             'self': 'Handsome',
             'cls': 'So fresh, So clean clean',
-            'unused': 'foo/bar'
+            'unused': 'foo/bar',
+            'User_': 'X'
         }
 
         user = User.create(data)
@@ -401,6 +404,15 @@ class DocumentTest(TestCase):
         self.assertEqual(user, data)
         company = Company.create(data)
         self.assertIsInstance(company, Company)
+
+    def test_instance_check(self):
+        class User(Document):
+            id = IntegerField()
+            name = CharField()
+
+        user = User(id=1, name='John')
+        self.assertTrue(isinstance(user, User))
+        self.assertFalse(isinstance({'id': 1, 'name': 'John'}, User))
 
 
 class DocumentMetaOptionsTest(TestCase):
@@ -563,8 +575,8 @@ class JsonValidationTest(TestCase):
             # salary = DecimalField(default=10000)
             address = DocumentField(model=Address)
             is_married = BooleanField(default=False)
-            social_networks = ListField(
-                of=[str], default=['facebook.com', 'google.com'])
+            social_networks = ListField(of=str,
+                                        default=['facebook.com', 'google.com'])
 
         self.user_cls = User
         self.user = User()

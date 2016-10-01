@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from collections import Mapping
+from collections import Mapping, MutableSequence, MutableMapping
 import copy
-import warnings
 from decimal import Decimal, InvalidOperation
 
 import six
@@ -126,15 +125,6 @@ class SimpleField(object):
                     "Field '%(name)s' is empty: {%(name)r: %(value)r}"
                     % {'name': self.name, 'value': value})
 
-    def _pre_validate(self, value, err=ValidationError):
-        """One of the validation chain method.
-
-        :param value: simplemodels.exceptions.ValidationError: class
-        :param err:
-        :return:
-        """
-        return value
-
     def validate(self, value, err=ValidationError):
         """Main field validation method.
 
@@ -156,7 +146,6 @@ class SimpleField(object):
             return value
 
         # Run validators chain
-        value = self._pre_validate(value=value, err=err)
         value = self._run_validators(value=value, err=err)
 
         # Check choices if passed
@@ -192,6 +181,9 @@ class SimpleField(object):
     def __set_value__(self, instance, value):
         """Common value setter to use it from __set__ descriptor and from
         simplemodels.models.Document init
+
+        IMPORTANT: THIS METHOD MUST RETURN A VALUE BECAUSE IT IS USED BY
+        A DOCUMENT ON PREPARE DOCUMENT STEP
 
         :param instance: simplemodels.models.Document instance
         :param value: field value
@@ -308,76 +300,62 @@ class DocumentField(SimpleField):
         super(DocumentField, self).__init__(**kwargs)
 
 
-class ListField(SimpleField):
+class ListField(SimpleField, MutableSequence):
     """ List of items field"""
 
-    def __init__(self, of, item_types=None, **kwargs):
-        if item_types:
-            warnings.warn(
-                "%s 'item_types' is deprecated, use 'of' instead"
-                % self.__class__.__name__, DeprecationWarning)
-        if not isinstance(of, (list, set, tuple)):
-            raise ValueError(
-                'Wrong item_types data format, must be list, '
-                'set or tuple, given {}'.format(type(of)))
-        self._set_default_validator(list, kwargs)
-
-        # list of possible item instances, for example: [str, int, float]
-        # NOTE: unicode value will be accepted for `str` type
-        self._item_types = []
-
-        # Item type must be callable
-        errors = []
-        for t in of:
-            if callable(t):
-                self._item_types.append(t)
-            else:
-                errors.append('{} item type must be callable'.format(t))
-
-        if errors:
-            raise ValueError('\n'.join(errors))
-
-        super(ListField, self).__init__(**kwargs)
-
-        self._set_default_value(kwargs.get('default', []))
-
-    def _pre_validate(self, value, err=ValidationError):
-        """Custom list field validate method
-
-        :param value: values list, save value name for interface compatibility
-        :param err: Exception class
-        :return: :raise err:
+    def __init__(self, of, **kwargs):
         """
 
-        values_list = value
-        if not isinstance(values_list, list):
-            raise err('Wrong values type {}, must be a list'.format(
-                type(values_list)))
+        :param of: list item type
+        :param kwargs:
+        """
+        if not callable(of):
+            raise ValueError('%r item type must be callable' % of)
 
-        errors = []
-        types = tuple(self._item_types)
+        def list_validator(val):
+            """Default ListField validator
 
-        # NOTE: treat unicode as a str type for py2, if an user passed a str,
-        # we will be polite and accept unicode as well.
-        # For py3 this will be equal by design
-        if PYTHON_VERSION == 2 and str in types:
-            types += unicode,
+            :param val: list item value
+            """
+            if not isinstance(val, list):
+                raise ValidationError('Value %r is not a list' % val)
+            return val
 
-        error_msg = 'List value {val} has wrong type ({err_type}), ' \
-                    'must be one of {types}'
-        for item in values_list:
-            if not isinstance(item, types):
-                msg = error_msg.format(val=item,
-                                       err_type=type(item).__name__,
-                                       types=types)
-                errors.append(msg)
+        self._set_default_validator(list_validator, kwargs)
 
-        if errors:
-            raise err('\n'.join(errors))
-        return values_list
+        if is_document(of):
+            document = of
+            kwargs['validators'].append(
+                lambda items: [document.create(val) for val in items])
+        else:
+            kwargs['validators'].append(
+                lambda items: [of(val) for val in items])
+
+        kwargs['default'] = kwargs.get('default', [])
+        super(ListField, self).__init__(**kwargs)
+
+    def __getitem__(self, index):
+        return self._value[index]
+
+    def insert(self, index, value):
+        value = self.validate(value)
+        self._value.insert(index, value)
+
+    def append(self, item):
+        value = self.validate(item)
+        return self._value.append(value)
+
+    def __delitem__(self, index):
+        del self._value[index]
+
+    def __setitem__(self, index, value):
+        self._value[index] = value
+
+    def __len__(self):
+        return len(self._value)
 
 
-class DictField(SimpleField):
+class DictField(SimpleField, MutableMapping):
     """ Dictionary field. Useful when you want to be more specific than just
     using SimpleField"""
 
@@ -393,3 +371,12 @@ class DictField(SimpleField):
 
     def __setitem__(self, key, value):
         self._value[key] = value
+
+    def __iter__(self):
+        return iter(self._value)
+
+    def __delitem__(self, key):
+        del self._value[key]
+
+    def __len__(self):
+        return len(self._value)
