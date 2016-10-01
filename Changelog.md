@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.5.0+1 (UNRELEASED)
+0.5.1 (2016-10-01)
 --------------------
 * [Feature] Support ListField having only one type of items + added MutableSequence interface
 * [Improvement] MutableMapping interface for the DictField
