@@ -83,24 +83,6 @@ class DocumentMeta(type):
         registry[name] = cls
         return cls
 
-    def __instancecheck__(cls, instance):
-        """Document instance check implementation.
-        It allows to do `isinstance(my_instance, MyDocument)`
-
-        :param instance: any data
-        :return: bool
-        """
-        # Instance data must be a dict or Document
-        cond = (isinstance(instance, dict),
-                issubclass(type(instance), Document))
-        if not any(cond):
-            return False
-        try:
-            cls(**instance)
-        except TypeError:
-            return False
-        return True
-
 
 @six.add_metaclass(DocumentMeta)
 class Document(AttributeDict):

@@ -127,13 +127,13 @@ There are 3 forms to assign a nested model to its' parent
 
 #### ListField
 
-Allows you to define list of items
+Enables to validate list of items
 
 Example:
 
     class Post(Document):
         text = CharField()
-        tags = ListField(of=[str], default=['news'])
+        tags = ListField(of=str, default=['news'])
 
 **NOTE:** mutable default values are protected (deep copied) and works as expected 
 
