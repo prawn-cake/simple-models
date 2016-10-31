@@ -81,6 +81,16 @@ class SimpleField(object):
     def name(self):
         return self._verbose_name or self._name
 
+    def _extract_value(self, value):
+        """Extract value helper.
+        This method looks dummy, but in some cases we need to extract value
+        from the structure, e.g NestedPath
+
+        :param value: any value
+        :return: extracted value
+        """
+        return value
+
     def _run_validators(self, value, err=ValidationError):
         """Run validators chain and return validated (cleaned) value
 
@@ -110,7 +120,7 @@ class SimpleField(object):
                 if not self.required and value is None:
                     return value
 
-                raise err("Wrong value '{!r}' for the field `{!r}`. "
+                raise err("Wrong value {!r} for the field `{!r}`. "
                           "{}".format(value, self, self.error_text))
         return value
 
@@ -129,15 +139,16 @@ class SimpleField(object):
         """Main field validation method.
 
         It runs several levels of validation:
-          * required attribute validation
-          * pre-validation
-          * validator chain
-          * choices validation if applied
+          * validate required values
+          * run main validators chain
+          * run choices validation if applied
 
         :param value: value to validate
         :param err: simplemodels.exceptions.ValidationError: class
         :return: validated value
         """
+        value = self._extract_value(value=value)
+
         # Validate required
         self._validate_required(value=value)
 
@@ -214,24 +225,28 @@ class SimpleField(object):
 
 
 class IntegerField(SimpleField):
+
     def __init__(self, **kwargs):
         self._set_default_validator(int, kwargs)
         super(IntegerField, self).__init__(**kwargs)
 
 
 class FloatField(SimpleField):
+
     def __init__(self, **kwargs):
         self._set_default_validator(float, kwargs)
         super(FloatField, self).__init__(**kwargs)
 
 
 class DecimalField(SimpleField):
+
     def __init__(self, **kwargs):
         self._set_default_validator(Decimal, kwargs)
         super(DecimalField, self).__init__(**kwargs)
 
 
 class CharField(SimpleField):
+
     def __init__(self, is_unicode=True, max_length=None, **kwargs):
         if PYTHON_VERSION == 2:
             validator = unicode if is_unicode else str
@@ -267,6 +282,7 @@ class CharField(SimpleField):
 
 
 class BooleanField(SimpleField):
+
     def __init__(self, **kwargs):
         self._set_default_validator(bool, kwargs)
         super(BooleanField, self).__init__(**kwargs)

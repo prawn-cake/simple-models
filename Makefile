@@ -55,5 +55,4 @@ register:
 .PHONY: upload
 upload: clean
 # target: upload - Upload package on PyPi
-	@$(VIRTUAL_ENV)/bin/pip install wheel
-	@$(PYTHON) setup.py sdist bdist_wheel upload -r pypi
+	@python setup.py sdist bdist_wheel upload -r pypi

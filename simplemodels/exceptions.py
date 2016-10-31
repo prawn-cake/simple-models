@@ -24,7 +24,7 @@ class ModelNotFoundError(ValidationError):
 
 
 class ModelValidationError(ValidationError):
-    """User-defined exception. Raised when post model validation is failed"""
+    """User-defined exception. Raised when model validation is failed"""
     pass
 
 

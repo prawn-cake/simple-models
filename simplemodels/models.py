@@ -181,12 +181,15 @@ class Document(AttributeDict):
                         (method_name, validation_method, ))
 
     @classmethod
-    def _protect_fields(cls, kwargs):
+    def _protect_fields(cls, data):
         """Rename all of the fields with ModelName_field.
         This enables fields protection from 'self', 'cls' and other reserved
         keywords
         """
-        return {'%s_%s' % (cls.__name__, k): v for k, v in kwargs.items()}
+        if not isinstance(data, dict):
+            raise ModelValidationError("Init data must be a dict %r is given"
+                                       % data)
+        return {'%s_%s' % (cls.__name__, k): v for k, v in data.items()}
 
     @classmethod
     def _unprotect_fields(cls, kwargs):
@@ -206,12 +209,13 @@ class Document(AttributeDict):
         return unprotected
 
     @classmethod
-    def create(cls, kwargs):
+    def create(cls, data):
         """Safe factory method to create a document
 
+        :param data: dict: init data
         :return: document instance
         """
-        protected = cls._protect_fields(kwargs)
+        protected = cls._protect_fields(data)
         return cls(**protected)
 
 
