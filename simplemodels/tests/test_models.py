@@ -414,6 +414,18 @@ class DocumentTest(TestCase):
         self.assertTrue(isinstance(user, User))
         self.assertFalse(isinstance({'id': 1, 'name': 'John'}, User))
 
+    def test_fail_create_model_with_non_dict_input(self):
+        class User(Document):
+            id = IntegerField()
+            name = CharField()
+
+        with self.assertRaises(ModelValidationError):
+            user = User.create(None)
+            self.assertIsNone(user)
+
+            user = User.create('this must be a dict')
+            self.assertIsNone(user)
+
 
 class DocumentMetaOptionsTest(TestCase):
     def test_nested_meta(self):

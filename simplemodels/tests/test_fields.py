@@ -3,7 +3,7 @@ from collections import OrderedDict
 from decimal import Decimal
 from unittest import TestCase
 import six
-
+import unittest
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
     FieldRequiredError, ModelNotFoundError

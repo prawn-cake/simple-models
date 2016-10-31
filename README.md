@@ -60,7 +60,6 @@ Describe your document model, use suitable fields or nested documents
     >>> json.dumps(person)
     '{"date_of_birth": null, "id": 0, "address": {"city": "Saint-Petersburg", "street": "6th Avenue"}, "name": "John"}'
 
-
 ## Fields
 * `SimpleField`     -- generic field (useful in cases when other fields are not)
 * `IntegerField`    -- integer field
@@ -184,6 +183,20 @@ Example:
         
         # With option
         {'name': 'Maksim'}
+
+## Validators
+
+Validator is always a callable object which gets data as an argument, validates it and returns validated data or raises `ValidationError`.
+
+Example of validators: `str`, `set`, `lambda value: datetime.strptime(value, '%Y-%m-%d')`, etc
+
+Validators can be used as a chain for the field, e.g
+    
+    import hashlib
+    
+    class User(Document):
+        username = CharField()
+        password = CharField(validators=[str, lambda x: hashlib.sha256(x).hexdigest()])
 
 
 ### Post-init model validation
