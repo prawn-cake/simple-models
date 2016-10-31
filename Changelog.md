@@ -1,8 +1,12 @@
 Changelog
 =========
 
-0.5.1 (2016-10-01)
+0.5.2 (2016-10-31)
 --------------------
+* [Improvement] Improve Document.create(...) method robustness
+
+0.5.1 (2016-10-01)
+------------------
 * [Feature] Support ListField having only one type of items + added MutableSequence interface
 * [Improvement] MutableMapping interface for the DictField
 * [Bugfix] ListField of Documents returns proper documents instances (https://github.com/prawn-cake/simple-models/issues/13)
