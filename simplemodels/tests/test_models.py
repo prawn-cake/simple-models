@@ -13,6 +13,7 @@ from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
 
 
 class AttributeDictTest(TestCase):
+
     def test_dict(self):
 
         ad = AttributeDict()
@@ -49,6 +50,7 @@ class AttributeDictTest(TestCase):
 
 
 class DocumentTest(TestCase):
+
     def test_document(self):
         class Money(Document):
 
@@ -257,6 +259,7 @@ class DocumentTest(TestCase):
         """
 
         class LogMessage(Document):
+
             class Meta:
                 ALLOW_EXTRA_FIELDS = True
 
@@ -380,6 +383,7 @@ class DocumentTest(TestCase):
 
     def test_model_with_self_field(self):
         class User(Document):
+
             class Meta:
                 ALLOW_EXTRA_FIELDS = True
 
@@ -428,6 +432,7 @@ class DocumentTest(TestCase):
 
 
 class DocumentMetaOptionsTest(TestCase):
+
     def test_nested_meta(self):
         class Message(Document):
             text = SimpleField()
@@ -467,6 +472,7 @@ class DocumentMetaOptionsTest(TestCase):
         self.assertEqual(msg, {'text': ''})
 
         class MessageWithoutNone(Document):
+
             class Meta:
                 OMIT_MISSED_FIELDS = True
 
@@ -509,6 +515,7 @@ class DocumentMetaOptionsTest(TestCase):
 
 
 class ValidationTest(TestCase):
+
     def test_raise_validation_error(self):
         from simplemodels.tests.stub_models import Person
 
@@ -536,6 +543,7 @@ class ValidationTest(TestCase):
 
 
 class ImmutableDocumentTest(TestCase):
+
     def test_immutable_document(self):
         class User(ImmutableDocument):
             id = IntegerField(default=1)
@@ -576,6 +584,7 @@ class ImmutableDocumentTest(TestCase):
 
 
 class JsonValidationTest(TestCase):
+
     def setUp(self):
         class Address(Document):
             city = CharField(default='St.Petersburg')
@@ -629,6 +638,7 @@ class JsonValidationTest(TestCase):
 
 
 class RegistryTest(TestCase):
+
     def test_registry(self):
         class User(Document):
             pass

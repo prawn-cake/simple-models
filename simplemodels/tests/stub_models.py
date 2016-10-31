@@ -38,5 +38,3 @@ class Address(Document):
 class Person(Document):
     name = SimpleField(required=True)
     address = SimpleField(validators=[Address])
-
-

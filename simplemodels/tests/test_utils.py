@@ -8,6 +8,7 @@ from simplemodels.utils import is_instance
 
 
 class ValidatorsTest(unittest.TestCase):
+
     def test_instance_validator(self):
         class Message(Document):
             ts = SimpleField(default=datetime.now,

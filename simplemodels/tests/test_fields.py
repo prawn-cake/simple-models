@@ -13,6 +13,7 @@ from simplemodels.models import Document
 
 
 class FieldsTest(TestCase):
+
     def setUp(self):
         class SubDocument(Document):
             int_field = IntegerField()
@@ -201,6 +202,7 @@ class FieldsTest(TestCase):
 
 
 class FieldsAttributesTest(TestCase):
+
     def setUp(self):
         # fmt: fields cls, test value, extra init kwargs
         self.fields = [
@@ -254,6 +256,7 @@ class FieldsAttributesTest(TestCase):
 
 
 class DocumentFieldTest(TestCase):
+
     def test_str_model_lookup(self):
         class Address(Document):
             street = CharField()
@@ -275,6 +278,7 @@ class DocumentFieldTest(TestCase):
 
 
 class ListFieldTest(TestCase):
+
     def test_base(self):
         class Post(Document):
             text = CharField()
@@ -368,10 +372,10 @@ class ListFieldTest(TestCase):
             comments = ListField(of=Comment)
 
         comments = [
-                {'body': 'comment #1'},
-                {'body': 'seconds comment'},
-                {'body': 'one more comment'},
-            ]
+            {'body': 'comment #1'},
+            {'body': 'seconds comment'},
+            {'body': 'one more comment'},
+        ]
         user = User.create({
             'name': 'John Smith',
             'comments': comments
