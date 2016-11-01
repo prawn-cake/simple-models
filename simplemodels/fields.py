@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from collections import Mapping, MutableSequence, MutableMapping
 import copy
+import warnings
+from collections import Mapping, MutableSequence, MutableMapping
 from decimal import Decimal, InvalidOperation
 
 import six
@@ -9,7 +10,6 @@ from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, DefaultValueError, \
     ImmutableFieldError, FieldRequiredError, ModelNotFoundError
 from simplemodels.utils import is_document
-
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
            'CharField', 'BooleanField', 'ListField', 'DocumentField',
@@ -322,11 +322,19 @@ class ListField(SimpleField, MutableSequence):
     def __init__(self, of, **kwargs):
         """
 
-        :param of: list item type
+        :param of: callable: single validator,
+                   e.g: 'str', 'lambda x: str(x).upper()'
         :param kwargs:
         """
         if not callable(of):
             raise ValueError('%r item type must be callable' % of)
+
+        # NOTE: forbid to have external validators for the ListField
+        if 'validators' in kwargs:
+            warnings.warn(
+                "%s shouldn't have 'validators' parameter, use 'of' instead"
+                % self.__class__.__name__)
+            kwargs.pop('validators')
 
         def list_validator(val):
             """Default ListField validator

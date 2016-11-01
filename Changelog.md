@@ -1,8 +1,12 @@
 Changelog
 =========
 
-0.5.2 (2016-10-31)
+0.5.2+1 (UNRELEASED)
 --------------------
+* [Improvement] Clearer interface for the ListField, it ignores user 'validators' parameter
+
+0.5.2 (2016-10-31)
+------------------
 * [Improvement] Improve Document.create(...) method robustness
 
 0.5.1 (2016-10-01)

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import hashlib
 from collections import OrderedDict
 from decimal import Decimal
 from unittest import TestCase
+
 import six
-import unittest
+
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
     FieldRequiredError, ModelNotFoundError
@@ -391,3 +393,18 @@ class ListFieldTest(TestCase):
         user = User(name='John Smith', comments=[comment])
         self.assertIsInstance(user, User)
         self.assertEqual(user.comments, [{'body': 'test comment'}])
+
+    def test_override_validators(self):
+        """Overriding 'validators' is not allowed for ListField, the proper
+        interface is to use 'of' parameter
+
+        """
+
+        class Post(Document):
+            id = IntegerField()
+            comments = ListField(of=lambda x: hashlib.sha256(x).hexdigest(),
+                                 validators=[str])
+
+        post = Post.create({'id': 1, 'comments': ['comment1', 'comment2']})
+        for comment in post.comments:
+            self.assertEqual(len(comment), 64)

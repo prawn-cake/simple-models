@@ -187,7 +187,7 @@ class Document(AttributeDict):
         keywords
         """
         if not isinstance(data, dict):
-            raise ModelValidationError("Init data must be a dict %r is given"
+            raise ModelValidationError("Init data must be a dict '%r' is given"
                                        % data)
         return {'%s_%s' % (cls.__name__, k): v for k, v in data.items()}
 
