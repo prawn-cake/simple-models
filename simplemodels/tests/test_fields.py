@@ -400,9 +400,11 @@ class ListFieldTest(TestCase):
 
         """
 
+        sha256 = lambda x: hashlib.sha256(x.encode('utf-8')).hexdigest()
+
         class Post(Document):
             id = IntegerField()
-            comments = ListField(of=lambda x: hashlib.sha256(x).hexdigest(),
+            comments = ListField(of=sha256,
                                  validators=[str])
 
         post = Post.create({'id': 1, 'comments': ['comment1', 'comment2']})
