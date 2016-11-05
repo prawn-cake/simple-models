@@ -8,7 +8,7 @@ import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, ImmutableFieldError, \
-    FieldRequiredError, ModelNotFoundError
+    FieldRequiredError, ModelNotFoundError, FieldError
 from simplemodels.fields import IntegerField, FloatField, DecimalField, \
     BooleanField, CharField, DocumentField, ListField, SimpleField, DictField
 from simplemodels.models import Document
@@ -410,3 +410,29 @@ class ListFieldTest(unittest.TestCase):
         post = Post.create({'id': 1, 'comments': ['comment1', 'comment2']})
         for comment in post.comments:
             self.assertEqual(len(comment), 64)
+
+
+class ValidatorsTest(unittest.TestCase):
+
+    def test_fail_validators_as_non_list(self):
+
+        with self.assertRaises(FieldError) as err:
+            class User(Document):
+                name = CharField(validators=str)
+
+            self.assertIn('validators must be list, tuple or set', str(err))
+
+    def test_validator_raises_validation_error(self):
+        def validate_password(value):
+            if len(value) < 10:
+                raise ValidationError('Password is too short')
+            return value
+
+        class User(Document):
+            name = CharField()
+            password = CharField(validators=[validate_password])
+
+        with self.assertRaises(ValidationError) as err:
+            user = User.create({'name': 'John', 'password': 'qwerty'})
+            self.assertIsNone(user)
+            self.assertIn('ValidationError: Password is too short', str(err))

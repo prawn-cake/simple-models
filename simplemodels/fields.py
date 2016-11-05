@@ -8,7 +8,7 @@ import six
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import ValidationError, DefaultValueError, \
-    ImmutableFieldError, FieldRequiredError, ModelNotFoundError
+    ImmutableFieldError, FieldRequiredError, ModelNotFoundError, FieldError
 from simplemodels.utils import is_document
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
@@ -23,7 +23,7 @@ class SimpleField(object):
     CHOICES_TYPES = (tuple, list, set)
 
     def __init__(self, default=None, required=False, choices=None, name=None,
-                 validators=None, error_text='', immutable=False, **kwargs):
+                 validators=None, immutable=False, **kwargs):
         """
         :param name: field name, it's set in the DocumentMeta
         :param default: default value
@@ -48,8 +48,8 @@ class SimpleField(object):
 
         # NOTE: new feature - chain of validators
         self.validators = validators or []
+
         self._value = None  # will be set by Document
-        self.error_text = error_text
 
         # Set default value
         self._set_default_value(default)
@@ -114,14 +114,14 @@ class SimpleField(object):
             # InvalidOperation for decimal, TypeError
             except InvalidOperation:
                 raise err("Invalid decimal operation for '{!r}' for the field "
-                          "`{!r}`. {}".format(value, self, self.error_text))
-            except (ValueError, TypeError):
+                          "`{!r}`".format(value, self))
+            except (ValueError, TypeError) as exc:
                 # Accept None value for non-required fields
                 if not self.required and value is None:
                     return value
 
-                raise err("Wrong value {!r} for the field `{!r}`. "
-                          "{}".format(value, self, self.error_text))
+                raise err("Wrong value {!r} for the field `{!r}`: "
+                          "{}".format(value, self, exc))
         return value
 
     def _validate_required(self, value):
@@ -175,8 +175,13 @@ class SimpleField(object):
         :param validator: callable
         """
         kwargs.setdefault('validators', [])
+        validators = kwargs['validators']
 
-        if validator not in kwargs['validators']:
+        if not isinstance(validators, (list, tuple, set)):
+            raise FieldError('validators must be list, tuple or set, '
+                             '%r is given' % validators)
+
+        if validator not in validators:
             kwargs['validators'].append(validator)
         return kwargs
 

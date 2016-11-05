@@ -4,7 +4,7 @@ import six
 import inspect
 import weakref
 from simplemodels.exceptions import ImmutableDocumentError, \
-    ModelValidationError
+    ModelValidationError, ValidationError
 from simplemodels.fields import SimpleField, DocumentField
 
 

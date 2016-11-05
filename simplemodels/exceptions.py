@@ -28,16 +28,17 @@ class ModelValidationError(ValidationError):
     pass
 
 
-class FieldRequiredError(ValidationError):
+class FieldError(ValidationError):
+    """Field specific exception"""
+    pass
+
+
+class FieldRequiredError(FieldError):
     """ Raised when required field is not found """
     pass
 
 
-class TypeIsNotSupported(ValidationError):
-    pass
-
-
-class DefaultValueError(ValidationError):
+class DefaultValueError(FieldError):
     """Raised when default value is wrong"""
     pass
 
@@ -47,6 +48,6 @@ class ImmutableDocumentError(ValidationError):
     pass
 
 
-class ImmutableFieldError(ValidationError):
+class ImmutableFieldError(FieldError):
     """Raised when try to set certain immutable field in a document"""
     pass
