@@ -237,7 +237,38 @@ Sometimes it turns out very handy to define base message class and define subcla
     class RabbitRpcMessage(BaseMessage):
         amqp_headers = DictField(required=True)
     
+
+### Immutable documents and fields
+
+If you need to make your field or whole document immutable
+
+#### Immutable field
+    
+    from simplemodels.models import Document
+    
+    class User(Document):
+        id = IntegerField(immutable=True)
+        name = CharField()
         
+    >>> user = User.create({'name': 'John', 'id': 1})
+    >>> user.name = 'Mark'
+    >>> user
+    User({'name': u'Mark', 'id': 1})
+    >>> user.id = 2
+    ImmutableFieldError: User.id field is immutable
+    
+#### Immutable document 
+
+    from simplemodels.models import ImmutableDocument
+    
+    class User(ImmutableDocument):
+        id = IntegerField()
+        name = CharField()
+        
+    >>> user = User.create({'name': 'John', 'id': 1})
+    >>> user.id = 2
+    
+    ImmutableDocumentError: User({'name': u'John', 'id': 1}) is immutable. Set operation is not allowed.
 
 ## Run tests
 

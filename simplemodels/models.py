@@ -218,14 +218,16 @@ class Document(AttributeDict):
         protected = cls._protect_fields(data)
         return cls(**protected)
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, dict(self))
+
 
 class ImmutableDocument(Document):
     """Read only document. Useful for validation purposes only"""
 
     def __setattr__(self, key, value):
         raise ImmutableDocumentError(
-            '%r is immutable. Set operation is not allowed for {}'.format(
-                self, self.__class__.__name__))
+            '{} is immutable. Set operation is not allowed.'.format(self))
 
     def __setitem__(self, key, value):
         return setattr(self, key, value)
