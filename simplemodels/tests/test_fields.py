@@ -2,7 +2,7 @@
 import hashlib
 from collections import OrderedDict
 from decimal import Decimal
-from unittest import TestCase
+import unittest
 
 import six
 
@@ -14,7 +14,7 @@ from simplemodels.fields import IntegerField, FloatField, DecimalField, \
 from simplemodels.models import Document
 
 
-class FieldsTest(TestCase):
+class FieldsTest(unittest.TestCase):
 
     def setUp(self):
         class SubDocument(Document):
@@ -62,19 +62,19 @@ class FieldsTest(TestCase):
             self.assertIsInstance(instance.bool_field, bool)
             self.assertEqual(instance.bool_field, False)
 
+    @unittest.skipIf(PYTHON_VERSION > 2, 'only py2 test')
     def test_char(self):
-        if PYTHON_VERSION == 2:
-            instance = self.model(char_field='abc')
-            self.assertIsInstance(instance.char_field, unicode)
-            self.assertEqual(instance.char_field, 'abc')
+        instance = self.model(char_field='abc')
+        self.assertIsInstance(instance.char_field, unicode)
+        self.assertEqual(instance.char_field, 'abc')
 
-            instance = self.model(uchar_field='abc')
-            self.assertIsInstance(instance.uchar_field, unicode)
-            self.assertEqual(instance.uchar_field, u'abc')
+        instance = self.model(uchar_field='abc')
+        self.assertIsInstance(instance.uchar_field, unicode)
+        self.assertEqual(instance.uchar_field, u'abc')
 
-            instance = self.model(uchar_field=1.0)
-            self.assertIsInstance(instance.uchar_field, unicode)
-            self.assertEqual(instance.uchar_field, u'1.0')
+        instance = self.model(uchar_field=1.0)
+        self.assertIsInstance(instance.uchar_field, unicode)
+        self.assertEqual(instance.uchar_field, u'1.0')
 
     def test_char_field_max_length(self):
         class User(Document):
@@ -203,7 +203,7 @@ class FieldsTest(TestCase):
         self.assertEqual(list(user.attrs.values()), [1, 2])
 
 
-class FieldsAttributesTest(TestCase):
+class FieldsAttributesTest(unittest.TestCase):
 
     def setUp(self):
         # fmt: fields cls, test value, extra init kwargs
@@ -257,7 +257,7 @@ class FieldsAttributesTest(TestCase):
             self.assertEqual(doc.test_field, test_value)
 
 
-class DocumentFieldTest(TestCase):
+class DocumentFieldTest(unittest.TestCase):
 
     def test_str_model_lookup(self):
         class Address(Document):
@@ -279,7 +279,7 @@ class DocumentFieldTest(TestCase):
             self.assertIn("Model 'Address1' does not exist", err)
 
 
-class ListFieldTest(TestCase):
+class ListFieldTest(unittest.TestCase):
 
     def test_base(self):
         class Post(Document):
