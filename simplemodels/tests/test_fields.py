@@ -404,8 +404,7 @@ class ListFieldTest(unittest.TestCase):
 
         class Post(Document):
             id = IntegerField()
-            comments = ListField(of=sha256,
-                                 validators=[str])
+            comments = ListField(of=sha256, validators=[str])
 
         post = Post.create({'id': 1, 'comments': ['comment1', 'comment2']})
         for comment in post.comments:
