@@ -5,8 +5,7 @@ import inspect
 import weakref
 from simplemodels.exceptions import ImmutableDocumentError, \
     ModelValidationError
-from simplemodels.fields import SimpleField, DocumentField
-
+from simplemodels.fields import SimpleField, DocumentField, ListField
 
 __all__ = ['Document', 'ImmutableDocument']
 
@@ -32,7 +31,7 @@ class AttributeDict(dict):
             raise AttributeError("Attribute '{}' doesn't exist".format(name))
 
     def __setattr__(self, key, value):
-        if isinstance(value, dict):
+        if isinstance(value, dict) and not isinstance(value, AttributeDict):
             value = AttributeDict(value)
         super(AttributeDict, self).__setattr__(key, value)
         self[key] = super(AttributeDict, self).__getattribute__(key)
@@ -98,19 +97,24 @@ class Document(AttributeDict):
         # TODO: it might make sense to add option to raise an error if unknown
         # field is given for the document
 
-    def __init__(self, **kwargs):
-        kwargs = self._unprotect_fields(kwargs)
-        kwargs = self._clean_kwargs(kwargs)
+    def __init__(self, data=None, **kwargs):
+        if data is None:
+            data = {}
+
+        if not isinstance(data, dict):
+            raise ModelValidationError("Data mush be dictionary, but got '%s'!" % type(data))
+
+        data = self._clean_data(data)
 
         # dict init
-        prepared_fields = self._prepare_fields(kwargs)
+        prepared_fields = self._prepare_fields(data, **kwargs)
         super(Document, self).__init__(**prepared_fields)
         self._post_init_validation()
 
-    def _prepare_fields(self, kwargs):
+    def _prepare_fields(self, data, **kwargs):
         """Do field validations and set defaults
 
-        :param kwargs: init parameters
+        :param data: init parameters
         :return:
         """
 
@@ -119,21 +123,25 @@ class Document(AttributeDict):
 
             # Get field value or set default
             default_val = getattr(field_obj, 'default')
-            field_val = kwargs.get(field_name)
+            field_val = data.get(field_name)
             if field_val is None:
                 field_val = default_val() if callable(default_val) \
                     else default_val
 
             # Build model structure
-            if field_name in kwargs:
+            if field_name in data:
                 # set presented field
-                val = field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = val
+                if issubclass(type(field_obj), (DocumentField, ListField)):
+                    val = field_obj.__set_value__(self, field_val, **kwargs)
+                else:
+                    val = field_obj.__set_value__(self, field_val)
+
+                data[field_name] = val
 
             # build empty nested document
             elif issubclass(type(field_obj), DocumentField):
-                val = field_obj.__set_value__(self, {})
-                kwargs[field_name] = val
+                val = field_obj.__set_value__(self, {}, **kwargs)
+                data[field_name] = val
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta.OMIT_MISSED_FIELDS:
@@ -141,13 +149,13 @@ class Document(AttributeDict):
                     # 'required' and other attributes
                     field_obj.validate(field_val)
                     continue
-                val = field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = val
+                val = field_obj.__set_value__(self, field_val, **kwargs)
+                data[field_name] = val
 
-        return kwargs
+        return data
 
     @classmethod
-    def _clean_kwargs(cls, kwargs):
+    def _clean_data(cls, kwargs):
         """Clean with excluding extra fields if the model has
         ALLOW_EXTRA_FIELDS meta flag on
 
@@ -180,44 +188,6 @@ class Document(AttributeDict):
                     raise ModelValidationError(
                         '%s (%r) is not a function' %
                         (method_name, validation_method, ))
-
-    @classmethod
-    def _protect_fields(cls, data):
-        """Rename all of the fields with ModelName_field.
-        This enables fields protection from 'self', 'cls' and other reserved
-        keywords
-        """
-        if not isinstance(data, dict):
-            raise ModelValidationError("Init data must be a dict '%r' is given"
-                                       % data)
-        return {'%s_%s' % (cls.__name__, k): v for k, v in data.items()}
-
-    @classmethod
-    def _unprotect_fields(cls, kwargs):
-        """Reverse of protect fields + backward compatible with old init style.
-
-        """
-        protect_prefix = '%s_' % cls.__name__
-        unprotected = {}
-        for k, v in kwargs.items():
-            if k.startswith(protect_prefix):
-                k = k.replace(protect_prefix, '', 1)
-                unprotected[k] = v
-
-            # Do not override protected and decoded values
-            if k not in unprotected:
-                unprotected[k] = v
-        return unprotected
-
-    @classmethod
-    def create(cls, data):
-        """Safe factory method to create a document
-
-        :param data: dict: init data
-        :return: document instance
-        """
-        protected = cls._protect_fields(data)
-        return cls(**protected)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, dict(self))

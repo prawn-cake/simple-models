@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import hashlib
+import unittest
 from collections import OrderedDict
 from decimal import Decimal
-import unittest
 
 import six
 
@@ -34,31 +34,31 @@ class FieldsTest(unittest.TestCase):
         self.model = Model
 
     def test_int(self):
-        instance = self.model(int_field='1')
+        instance = self.model(dict(int_field='1'))
         self.assertIsInstance(instance.int_field, int)
         self.assertEqual(instance.int_field, 1)
-        self.assertRaises(ValidationError, self.model, int_field='a')
+        self.assertRaises(ValidationError, self.model, dict(int_field='a'))
 
     def test_float(self):
-        instance = self.model(float_field='1')
+        instance = self.model(dict(float_field='1'))
         self.assertIsInstance(instance.float_field, float)
         self.assertEqual(instance.float_field, 1.0)
-        self.assertRaises(ValidationError, self.model, float_field='a')
+        self.assertRaises(ValidationError, self.model, dict(float_field='a'))
 
     def test_decimal(self):
-        instance = self.model(decimal_field=1.0)
+        instance = self.model(dict(decimal_field=1.0))
         self.assertIsInstance(instance.decimal_field, Decimal)
         self.assertEqual(instance.decimal_field, Decimal('1.0'))
-        self.assertRaises(ValidationError, self.model, decimal_field='a')
+        self.assertRaises(ValidationError, self.model, dict(decimal_field='a'))
 
     def test_bool(self):
         for val in (1, True, 'abc'):
-            instance = self.model(bool_field=val)
+            instance = self.model(dict(bool_field=val))
             self.assertIsInstance(instance.bool_field, bool)
             self.assertEqual(instance.bool_field, True)
 
         for val in ('', 0, None, False):
-            instance = self.model(bool_field=val)
+            instance = self.model(dict(bool_field=val))
             self.assertIsInstance(instance.bool_field, bool)
             self.assertEqual(instance.bool_field, False)
 
@@ -81,7 +81,7 @@ class FieldsTest(unittest.TestCase):
             username = CharField(max_length=20)
 
         with self.assertRaises(ValidationError) as err:
-            user = User(username='a' * 21)
+            user = User(dict(username='a' * 21))
             self.assertIsNone(user)
             self.assertIn('Max length is exceeded', err)
 
@@ -89,8 +89,8 @@ class FieldsTest(unittest.TestCase):
         class User(Document):
             name = CharField(required=True)
 
-        user_1 = User(name='John')
-        user_2 = User(name=six.u('宝, 褒, 苞'))
+        user_1 = User(dict(name='John'))
+        user_2 = User(dict(name=six.u('宝, 褒, 苞')))
         if PYTHON_VERSION == 2:
             self.assertIsInstance(user_1.name, unicode)
             self.assertIsInstance(user_2.name, unicode)
@@ -120,7 +120,7 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual(user_2.name, '')
 
     def test_doc(self):
-        instance = self.model(doc_field={'int_field': '1'})
+        instance = self.model(dict(doc_field={'int_field': '1'}))
         self.assertIsInstance(instance.doc_field, self.subdocument)
         self.assertEqual(instance.doc_field, {'int_field': 1})
 
@@ -133,7 +133,7 @@ class FieldsTest(unittest.TestCase):
             name = CharField()
             system_id = IntegerField(immutable=True)
 
-        user = User(system_id=0)
+        user = User(dict(system_id=0))
         self.assertEqual(user.system_id, 0)
 
         with self.assertRaises(ImmutableFieldError) as err:
@@ -150,7 +150,7 @@ class FieldsTest(unittest.TestCase):
             viewed = SimpleField(
                 validators=[lambda items: [User(**item) for item in items]])
 
-        post = Post(text='abc', viewed=[{'name': 'John'}])
+        post = Post(dict(text='abc', viewed=[{'name': 'John'}]))
         self.assertIsInstance(post, Post)
         self.assertIsInstance(post.viewed, list)
 
@@ -177,11 +177,11 @@ class FieldsTest(unittest.TestCase):
 
         correct_values = ({'a': 1}, dict(a=None, b=False))
         for val in correct_values:
-            user = User(attrs=val)
+            user = User(dict(attrs=val))
             self.assertEqual(user.attrs, val)
 
         # Test __setitem__ and __getitem__ field methods
-        user = User(attrs={})
+        user = User(dict(attrs={}))
         self.assertEqual(user.get_attr_x(), None)
 
         user.set_attr_x(1)
@@ -198,7 +198,7 @@ class FieldsTest(unittest.TestCase):
 
         class User(Document):
             attrs = DictField(required=True, dict_cls=OrderedDict)
-        user = User(attrs=[('b', 1), ('a', 2)])
+        user = User(dict(attrs=[('b', 1), ('a', 2)]))
         self.assertIsInstance(user.attrs, OrderedDict)
         self.assertEqual(list(user.attrs.values()), [1, 2])
 
@@ -226,7 +226,7 @@ class FieldsAttributesTest(unittest.TestCase):
                 test_field = field_cls(required=True, **kwargs)
 
             # Test correct document creation
-            doc = MyDocument(test_field=test_value)
+            doc = MyDocument(dict(test_field=test_value))
             self.assertIsInstance(doc, MyDocument)
             self.assertEqual(doc.test_field, test_value)
 
@@ -266,7 +266,7 @@ class DocumentFieldTest(unittest.TestCase):
         class User(Document):
             address = DocumentField(model='Address')
 
-        user = User.create({'address': {'street': 'Morison street'}})
+        user = User({'address': {'street': 'Morison street'}})
         self.assertEqual(user.address.street, 'Morison street')
 
     def test_str_model_lookup_error(self):
@@ -274,7 +274,7 @@ class DocumentFieldTest(unittest.TestCase):
             address = DocumentField(model='Address1')
 
         with self.assertRaises(ModelNotFoundError) as err:
-            user = User.create({'address': {'street': 'Morison street'}})
+            user = User({'address': {'street': 'Morison street'}})
             self.assertIsNone(user)
             self.assertIn("Model 'Address1' does not exist", err)
 
@@ -288,18 +288,18 @@ class ListFieldTest(unittest.TestCase):
 
         # Test wrong tags type, must be list of items
         with self.assertRaises(ValidationError):
-            post = Post(text='test', tags='Tags')
+            post = Post(dict(text='test', tags='Tags'))
             self.assertIsNone(post)
 
         # Test wrong list item type, int is not accepted for Post
         with self.assertRaises(ValidationError):
-            post = Post(text='test', tags=['a', 1, Decimal(1)])
+            post = Post(dict(text='test', tags=['a', 1, Decimal(1)]))
             self.assertIsNone(post)
 
-        post = Post(text='text')
+        post = Post(dict(text='text'))
         self.assertEqual(post.tags, [])
 
-        post = Post(text='test', tags=[2, 1.0])
+        post = Post(dict(text='test', tags=[2, 1.0]))
         self.assertIsInstance(post, Post)
         self.assertEqual(post.tags, [2.0, 1.0])
 
@@ -335,11 +335,11 @@ class ListFieldTest(unittest.TestCase):
             text = CharField()
             comments = ListField(of=Comment)
 
-        post = Post.create({'text': 'my post',
-                            'comments': [
-                                {'text': 'Comment #1'},
-                                {'text': 'Comment #2'}]
-                            })
+        post = Post({'text': 'my post',
+                     'comments': [
+                         {'text': 'Comment #1'},
+                         {'text': 'Comment #2'}]
+                     })
         self.assertEqual(len(post.comments), 2)
         self.assertEqual(len(post.comments[:]), 2)
         self.assertEqual(post.comments[0].text, 'Comment #1')
@@ -361,7 +361,7 @@ class ListFieldTest(unittest.TestCase):
             text = CharField()
             tags = ListField(of=str, required=True)
 
-        p = Post.create({})
+        p = Post({})
         self.assertEqual(p.tags, [])
         self.assertEqual(p, {'text': '', 'tags': []})
 
@@ -378,7 +378,7 @@ class ListFieldTest(unittest.TestCase):
             {'body': 'seconds comment'},
             {'body': 'one more comment'},
         ]
-        user = User.create({
+        user = User({
             'name': 'John Smith',
             'comments': comments
         })
@@ -389,8 +389,8 @@ class ListFieldTest(unittest.TestCase):
             self.assertTrue(comment.body)
             self.assertIsInstance(comment, Comment)
 
-        comment = Comment(body='test comment')
-        user = User(name='John Smith', comments=[comment])
+        comment = Comment(dict(body='test comment'))
+        user = User(dict(name='John Smith', comments=[comment]))
         self.assertIsInstance(user, User)
         self.assertEqual(user.comments, [{'body': 'test comment'}])
 
@@ -406,7 +406,7 @@ class ListFieldTest(unittest.TestCase):
             id = IntegerField()
             comments = ListField(of=sha256, validators=[str])
 
-        post = Post.create({'id': 1, 'comments': ['comment1', 'comment2']})
+        post = Post({'id': 1, 'comments': ['comment1', 'comment2']})
         for comment in post.comments:
             self.assertEqual(len(comment), 64)
 
@@ -432,6 +432,6 @@ class ValidatorsTest(unittest.TestCase):
             password = CharField(validators=[validate_password])
 
         with self.assertRaises(ValidationError) as err:
-            user = User.create({'name': 'John', 'password': 'qwerty'})
+            user = User({'name': 'John', 'password': 'qwerty'})
             self.assertIsNone(user)
             self.assertIn('ValidationError: Password is too short', str(err))

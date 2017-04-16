@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
-from unittest import TestCase
-from datetime import datetime
 import time
+from datetime import datetime
+from unittest import TestCase
 
 from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     DefaultValueError, ImmutableDocumentError, ModelValidationError
@@ -98,16 +98,16 @@ class DocumentTest(TestCase):
             self.assertIn('Field xsi_type is required', str(err))
 
         self.assertRaises(
-            FieldRequiredError, TestDocument, xsi_type='')
+            FieldRequiredError, TestDocument, dict(xsi_type=''))
         self.assertRaises(
-            FieldRequiredError, TestDocument, xsi_type=None)
-        self.assertTrue(TestDocument(xsi_type='html'))
+            FieldRequiredError, TestDocument, dict(xsi_type=None))
+        self.assertTrue(TestDocument(dict(xsi_type='html')))
 
     def test_default_values_with_several_instances(self):
         from simplemodels.tests.stub_models import MailboxItem
 
         td = MailboxItem()
-        td_2 = MailboxItem(is_read=True)
+        td_2 = MailboxItem(dict(is_read=True))
 
         self.assertFalse(td.is_read)
         self.assertTrue(td_2.is_read)
@@ -152,7 +152,7 @@ class DocumentTest(TestCase):
             def c(self):
                 return str(self.a) + str(self.b)
 
-        document = DocumentWithProperty(a=1, b=2)
+        document = DocumentWithProperty(dict(a=1, b=2))
 
         self.assertEqual(document.c, '12')
 
@@ -181,15 +181,17 @@ class DocumentTest(TestCase):
             name = SimpleField(required=True, default='TestName')
             address = DocumentField(model=PostAddress)
 
-        a = User(id='1', name='Maks', address=PostAddress(street=999))
+        a = User(dict(id='1', name='Maks', address=PostAddress(dict(street=999))))
         self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
 
         a = User(
-            id='1', name='Maks',
-            address={'street': 999, 'city': 'Saint-Petersburg'}
+            dict(
+                id='1', name='Maks',
+                address={'street': 999, 'city': 'Saint-Petersburg'}
+            )
         )
         self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
@@ -201,7 +203,7 @@ class DocumentTest(TestCase):
         # Expect a ValidationError: wrong 'address' format is passed
         self.assertRaises(
             ValidationError, User,
-            id='1', name='Maks', address=[('street', 999), ]
+            dict(id='1', name='Maks', address=[('street', 999), ])
         )
 
     def test_model_with_validator(self):
@@ -218,28 +220,30 @@ class DocumentTest(TestCase):
             ts = DocumentField(model=Timestamp)
 
         moment = Moment(
-            start_date='2009-04-01T23:51:23Z',
-            count='1',
-            timestamp=dict(hour=10, minute=59),
-            ts=Timestamp(hour=10, minute=59)
+            dict(
+                start_date='2009-04-01T23:51:23Z',
+                count='1',
+                timestamp=dict(hour=10, minute=59),
+                ts=Timestamp(hour=10, minute=59)
+            )
         )
         self.assertIsInstance(moment.start_date, datetime)
         self.assertIsInstance(moment.count, int)
         self.assertIsInstance(moment.timestamp, Timestamp)
         self.assertIsInstance(moment.ts, Timestamp)
 
-        self.assertRaises(ValidationError, Moment, count='a')
+        self.assertRaises(ValidationError, Moment, dict(count='a'))
 
     def test_model_verbose_name(self):
         class RateModel(Document):
             InterestRate = FloatField(name='Interest Rate')
 
         data = {"Interest Rate": "1.01"}
-        my_model = RateModel(**data)
+        my_model = RateModel(data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
 
-        my_model = RateModel(**data)
+        my_model = RateModel(data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
         self.assertEqual(my_model['Interest Rate'], 1.01)
@@ -248,7 +252,7 @@ class DocumentTest(TestCase):
         class RateModel(Document):
             InterestRate = FloatField(name='Interest Rate', required=True)
         data = {"Interest Rate": "1.01"}
-        my_model = RateModel(**data)
+        my_model = RateModel(data)
         self.assertEqual(my_model['Interest Rate'], 1.01)
         self.assertRaises(FieldRequiredError, RateModel)
 
@@ -268,10 +272,12 @@ class DocumentTest(TestCase):
             text = CharField(max_length=500)
 
         msg = LogMessage(
-            timestamp=datetime.now(),
-            app_name='Logger',
-            text='test log message',
-            level='DEBUG'  # extra field isn't described in the document
+            dict(
+                timestamp=datetime.now(),
+                app_name='Logger',
+                text='test log message',
+                level='DEBUG'  # extra field isn't described in the document
+            )
         )
         self.assertEqual(msg.level, 'DEBUG')
 
@@ -282,10 +288,10 @@ class DocumentTest(TestCase):
 
         with self.assertRaises(ValidationError):
             # Put wrong log level
-            message = LogMessage(level='FATAL', text='Test log message')
+            message = LogMessage(dict(level='FATAL', text='Test log message'))
             self.assertIsNone(message)
 
-        message = LogMessage(level='DEBUG', text='Test log message')
+        message = LogMessage(dict(level='DEBUG', text='Test log message'))
         self.assertTrue(message)
 
         with self.assertRaises(ValueError) as err:
@@ -310,11 +316,11 @@ class DocumentTest(TestCase):
         class UserMessage(Message):
             user_id = IntegerField()
 
-        msg = UserMessage(text='message text')
+        msg = UserMessage(dict(text='message text'))
         self.assertIn('text', msg)
         self.assertIn('user_id', msg)
 
-        msg = UserMessage(text='user message text')
+        msg = UserMessage(dict(text='user message text'))
         self.assertEqual(msg.user_id, None)
         self.assertEqual(msg.text, 'user message text')
 
@@ -328,7 +334,7 @@ class DocumentTest(TestCase):
         class User(AuthMixin, UserMixin):
             full_name = CharField()
 
-        user = User(username='John')
+        user = User(dict(username='John'))
         self.assertEqual(user.username, 'John')
         self.assertEqual(user.id, None)
         self.assertEqual(user.full_name, '')
@@ -342,12 +348,12 @@ class DocumentTest(TestCase):
 
         # expect that inherited username field is still required
         with self.assertRaises(FieldRequiredError) as err:
-            my_user = MyUser(id=1)
+            my_user = MyUser(dict(id=1))
             self.assertIsNone(my_user)
             self.assertIn('Field username is required', str(err))
 
         # Check that id value was overridden and coerced to float
-        my_user = MyUser(id=1, username='Max')
+        my_user = MyUser(dict(id=1, username='Max'))
         self.assertIsInstance(my_user.id, float)
 
         # Check fields existence
@@ -374,11 +380,11 @@ class DocumentTest(TestCase):
                 return value
 
         with self.assertRaises(ModelValidationError) as err:
-            user = User(name='Mikko', password='123', is_admin=True)
+            user = User(dict(name='Mikko', password='123', is_admin=True))
             self.assertIn('Admin password is too short', str(err))
             self.assertIsNone(user)
 
-        user = User(name='Mikko', password='1234567890', is_admin=True)
+        user = User(dict(name='Mikko', password='1234567890', is_admin=True))
         self.assertIsInstance(user, User)
 
     def test_model_with_self_field(self):
@@ -403,10 +409,10 @@ class DocumentTest(TestCase):
             'User_': 'X'
         }
 
-        user = User.create(data)
+        user = User(data)
         self.assertIsInstance(user, User)
         self.assertEqual(user, data)
-        company = Company.create(data)
+        company = Company(data)
         self.assertIsInstance(company, Company)
 
     def test_instance_check(self):
@@ -424,11 +430,7 @@ class DocumentTest(TestCase):
             name = CharField()
 
         with self.assertRaises(ModelValidationError):
-            user = User.create(None)
-            self.assertIsNone(user)
-
-            user = User.create('this must be a dict')
-            self.assertIsNone(user)
+            User('this must be a dict')
 
 
 class DocumentMetaOptionsTest(TestCase):
@@ -510,7 +512,7 @@ class DocumentMetaOptionsTest(TestCase):
             user = User()
             self.assertIsNone(user)
 
-        user = User(name='Mr.Robot')
+        user = User(dict(name='Mr.Robot'))
         self.assertEqual(user, {'name': 'Mr.Robot'})
 
 
