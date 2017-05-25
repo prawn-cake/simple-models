@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
-
-import six
+import copy
 import inspect
 import weakref
+from abc import ABCMeta
+from collections import MutableMapping
+
+import six
+
 from simplemodels.exceptions import ImmutableDocumentError, \
     ModelValidationError
-from simplemodels.fields import SimpleField, DocumentField, ListField
+from simplemodels.fields import DocumentField, ExtraField, ListField, SimpleField
 
 __all__ = ['Document', 'ImmutableDocument']
-
 
 registry = weakref.WeakValueDictionary()
 
 
 class AttributeDict(dict):
-
     """Dict wrapper with access to keys via attributes"""
 
     def __getattr__(self, name):
@@ -37,7 +39,7 @@ class AttributeDict(dict):
         self[key] = super(AttributeDict, self).__getattribute__(key)
 
 
-class DocumentMeta(type):
+class DocumentMeta(ABCMeta):
     """ Metaclass for collecting fields info """
 
     def __new__(mcs, name, parents, dct):
@@ -84,7 +86,7 @@ class DocumentMeta(type):
 
 
 @six.add_metaclass(DocumentMeta)
-class Document(AttributeDict):
+class Document(MutableMapping):
     """ Main class to represent structured dict-like document """
 
     class Meta:
@@ -101,15 +103,47 @@ class Document(AttributeDict):
         if data is None:
             data = {}
 
-        if not isinstance(data, dict):
-            raise ModelValidationError("Data mush be dictionary, but got '%s'!" % type(data))
+        if not isinstance(data, MutableMapping):
+            raise ModelValidationError("Data must be instance of mapping, but got '%s'!" % type(data))
+
+        data = copy.deepcopy(data)
 
         data = self._clean_data(data)
 
-        # dict init
-        prepared_fields = self._prepare_fields(data, **kwargs)
-        super(Document, self).__init__(**prepared_fields)
+        self._prepare_fields(data, **kwargs)
         self._post_init_validation()
+
+    def __getitem__(self, name):
+        return getattr(self, name)
+
+    def __setitem__(self, name, value):
+        setattr(self, name, value)
+
+    def __delitem__(self, name):
+        delattr(self, name)
+
+    def __iter__(self):
+        """
+        Iterator over available field names of the Document.
+
+        Fields, which values are `None` will be returned only
+        in case `OMIT_MISSED_FIELDS` meta variable is `False`.
+        """
+        for field_name in self._fields:
+            if self.get(field_name) is not None or not self._meta['OMIT_MISSED_FIELDS']:
+                yield field_name
+
+    def __len__(self):
+        return len(self._fields)
+
+    def as_dict(self):
+        result = dict()
+        for field_name, field in self.items():
+            if isinstance(field, Document):
+                field = field.as_dict()
+            result[field_name] = field
+
+        return result
 
     def _prepare_fields(self, data, **kwargs):
         """Do field validations and set defaults
@@ -123,6 +157,7 @@ class Document(AttributeDict):
 
             # Get field value or set default
             default_val = getattr(field_obj, 'default')
+
             field_val = data.get(field_name)
             if field_val is None:
                 field_val = default_val() if callable(default_val) \
@@ -130,18 +165,18 @@ class Document(AttributeDict):
 
             # Build model structure
             if field_name in data:
+                # remove field from data, so at the end
+                # only extra fields would left.
+                data.pop(field_name)
                 # set presented field
                 if issubclass(type(field_obj), (DocumentField, ListField)):
-                    val = field_obj.__set_value__(self, field_val, **kwargs)
+                    field_obj.__set_value__(self, field_val, **kwargs)
                 else:
-                    val = field_obj.__set_value__(self, field_val)
-
-                data[field_name] = val
+                    field_obj.__set_value__(self, field_val)
 
             # build empty nested document
             elif issubclass(type(field_obj), DocumentField):
-                val = field_obj.__set_value__(self, {}, **kwargs)
-                data[field_name] = val
+                field_obj.__set_value__(self, {}, **kwargs)
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta.OMIT_MISSED_FIELDS:
@@ -149,9 +184,15 @@ class Document(AttributeDict):
                     # 'required' and other attributes
                     field_obj.validate(field_val)
                     continue
-                val = field_obj.__set_value__(self, field_val, **kwargs)
-                data[field_name] = val
+                field_obj.__set_value__(self, field_val, **kwargs)
 
+        for key, value in data.items():
+            field_obj = ExtraField()
+            field_obj._name = key
+            field_obj._holder_name = self.__class__.__name__
+            self._fields[key] = field_obj
+
+            field_obj.__set_value__(self, value, **kwargs)
         return data
 
     @classmethod
@@ -166,11 +207,9 @@ class Document(AttributeDict):
 
         # put everything extra in the document
         if cls._meta.ALLOW_EXTRA_FIELDS:
-            kwargs = {k: v for k, v in kwargs.items()}
+            return kwargs
         else:
-            kwargs = {k: v for k, v in kwargs.items() if k in fields}
-
-        return kwargs
+            return {k: v for k, v in kwargs.items() if k in fields}
 
     def _post_init_validation(self):
         """Validate model after init with validate_%s extra methods
@@ -187,7 +226,7 @@ class Document(AttributeDict):
                 else:
                     raise ModelValidationError(
                         '%s (%r) is not a function' %
-                        (method_name, validation_method, ))
+                        (method_name, validation_method,))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, dict(self))

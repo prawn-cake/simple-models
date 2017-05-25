@@ -232,6 +232,15 @@ class SimpleField(object):
         return self.__repr__()
 
 
+class ExtraField(SimpleField):
+    """
+    Class for creating fields from extra values.
+
+    If Model has `ALLOW_EXTRA_FIELDS` meta flag configured,
+    all extra fields would be created using this class.
+    """
+
+
 class IntegerField(SimpleField):
 
     def __init__(self, **kwargs):

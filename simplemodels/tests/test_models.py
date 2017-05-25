@@ -65,7 +65,7 @@ class DocumentTest(TestCase):
 
         bid = BidEmbedded()
 
-        self.assertIsInstance(bid, dict)
+        self.assertIsInstance(dict(bid), dict)
         self.assertIsInstance(bid._fields, dict)
         self.assertEqual(
             sorted(bid._fields), sorted(('xsi_type', 'contentBid'))
@@ -606,7 +606,7 @@ class JsonValidationTest(TestCase):
 
     def test_json_dumps(self):
         # Serialize document to json
-        serialized = json.dumps(self.user)
+        serialized = json.dumps(dict(self.user.as_dict()))
         self.assertIsInstance(serialized, str)
 
         # Deserialize
@@ -631,7 +631,7 @@ class JsonValidationTest(TestCase):
 
         post_1 = Post()
         self.assertIsNone(post_1.owner_id)
-        json_data = json.dumps(post_1)
+        json_data = json.dumps(post_1.as_dict())
         post_2 = Post(**json.loads(json_data))
         self.assertIsNone(post_2.owner_id)
 
