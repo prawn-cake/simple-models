@@ -8,45 +8,8 @@ from simplemodels.exceptions import ValidationError, FieldRequiredError, \
     DefaultValueError, ImmutableDocumentError, ModelValidationError
 from simplemodels.fields import SimpleField, IntegerField, CharField, \
     DocumentField, FloatField, BooleanField, ListField
-from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
+from simplemodels.models import Document, ImmutableDocument, \
     registry
-
-
-class AttributeDictTest(TestCase):
-
-    def test_dict(self):
-
-        ad = AttributeDict()
-        ad._id = 1
-        self.assertEqual(ad['_id'], 1)
-        self.assertEqual(ad._id, 1)
-        self.assertEqual(getattr(ad, '_id'), 1)
-
-    def test_system_methods(self):
-        from copy import deepcopy
-
-        attr_d = AttributeDict(a=1)
-        ad_copy = deepcopy(attr_d)
-        self.assertTrue(ad_copy)
-
-    def test_nested_dict_access_via_attributes(self):
-        # Test nested attributes on create (on get in fact)
-        d = AttributeDict(a=1, nested=dict(b=2, nested_2=dict(c=3)))
-        self.assertEqual(d.a, 1)
-        self.assertEqual(d.nested.b, 2)
-        self.assertEqual(d.nested.nested_2.c, 3)
-        self.assertEqual(d, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
-
-        # Test nested attributes on set
-        d_2 = AttributeDict()
-        d_2.a = 1
-        d_2.nested = dict(b=2)
-        d_2.nested.nested_2 = dict(c=3)
-        self.assertEqual(d_2.a, 1)
-        self.assertEqual(d_2.nested.b, 2)
-        self.assertEqual(d_2.nested.nested_2.c, 3)
-        self.assertEqual(
-            d_2, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
 
 
 class DocumentTest(TestCase):
@@ -444,8 +407,8 @@ class DocumentMetaOptionsTest(TestCase):
                 OMIT_MISSED_FIELDS = True
 
         msg = Message()
-        self.assertEqual(msg._meta.OMIT_MISSED_FIELDS, True)
-        self.assertEqual(msg._meta.ALLOW_EXTRA_FIELDS, False)
+        self.assertEqual(msg._meta['OMIT_MISSED_FIELDS'], True)
+        self.assertEqual(msg._meta['ALLOW_EXTRA_FIELDS'], False)
 
     def test_nested_meta_with_inheritance(self):
         class Message(Document):
@@ -463,8 +426,8 @@ class DocumentMetaOptionsTest(TestCase):
 
         # Expect that Message meta options will be inherited
         log_msg = LogMessage()
-        self.assertEqual(log_msg._meta.OMIT_MISSED_FIELDS, False)
-        self.assertEqual(log_msg._meta.ALLOW_EXTRA_FIELDS, False)
+        self.assertEqual(log_msg._meta['OMIT_MISSED_FIELDS'], False)
+        self.assertEqual(log_msg._meta['ALLOW_EXTRA_FIELDS'], False)
 
     def test_omit_missed_fields_attribute(self):
         class Message(Document):

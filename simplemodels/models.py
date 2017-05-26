@@ -16,29 +16,6 @@ __all__ = ['Document', 'ImmutableDocument']
 registry = weakref.WeakValueDictionary()
 
 
-class AttributeDict(dict):
-    """Dict wrapper with access to keys via attributes"""
-
-    def __getattr__(self, name):
-        # do not affect magic methods like __deepcopy__
-        if name.startswith('__') and name.endswith('__'):
-            return super(AttributeDict, self).__getattr__(self, name)
-
-        try:
-            val = self[name]
-            if isinstance(val, dict) and not isinstance(val, AttributeDict):
-                return AttributeDict(val)
-            return val
-        except KeyError:
-            raise AttributeError("Attribute '{}' doesn't exist".format(name))
-
-    def __setattr__(self, key, value):
-        if isinstance(value, dict) and not isinstance(value, AttributeDict):
-            value = AttributeDict(value)
-        super(AttributeDict, self).__setattr__(key, value)
-        self[key] = super(AttributeDict, self).__getattribute__(key)
-
-
 class DocumentMeta(ABCMeta):
     """ Metaclass for collecting fields info """
 
@@ -53,7 +30,7 @@ class DocumentMeta(ABCMeta):
         """
 
         _fields = {}
-        _meta = AttributeDict()
+        _meta = dict()
 
         # Document inheritance implementation
         for parent_cls in parents:
@@ -62,7 +39,7 @@ class DocumentMeta(ABCMeta):
             _fields.update(parent_fields)
 
             # Copy parent meta options
-            parent_meta = getattr(parent_cls, '_meta', AttributeDict())
+            parent_meta = getattr(parent_cls, '_meta', dict())
             _meta.update(parent_meta)
 
         # Inspect subclass to save SimpleFields and require field names
@@ -179,7 +156,7 @@ class Document(MutableMapping):
                 field_obj.__set_value__(self, {}, **kwargs)
             else:
                 # field is not presented in the given init parameters
-                if field_val is None and self._meta.OMIT_MISSED_FIELDS:
+                if field_val is None and self._meta['OMIT_MISSED_FIELDS']:
                     # Run validation even on skipped fields to validate
                     # 'required' and other attributes
                     field_obj.validate(field_val)
@@ -206,7 +183,7 @@ class Document(MutableMapping):
         fields = getattr(cls, '_fields', {})
 
         # put everything extra in the document
-        if cls._meta.ALLOW_EXTRA_FIELDS:
+        if cls._meta['ALLOW_EXTRA_FIELDS']:
             return kwargs
         else:
             return {k: v for k, v in kwargs.items() if k in fields}
