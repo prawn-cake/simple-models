@@ -80,6 +80,9 @@ class Document(MutableMapping):
         if data is None:
             data = {}
 
+        if self._meta['ALLOW_EXTRA_FIELDS']:
+            self._fields = copy.deepcopy(self._fields)
+
         if not isinstance(data, MutableMapping):
             raise ModelValidationError("Data must be instance of mapping, but got '%s'!" % type(data))
 
@@ -163,6 +166,8 @@ class Document(MutableMapping):
                     continue
                 field_obj.__set_value__(self, field_val, **kwargs)
 
+        # Create extra field if any were not
+        # filtered by `_clean_data` method.
         for key, value in data.items():
             field_obj = ExtraField()
             field_obj._name = key
