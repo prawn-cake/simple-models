@@ -28,7 +28,7 @@ class DocumentTest(TestCase):
 
         bid = BidEmbedded()
 
-        self.assertIsInstance(dict(bid), dict)
+        self.assertIsInstance(bid.as_dict(), dict)
         self.assertIsInstance(bid._fields, dict)
         self.assertEqual(
             sorted(bid._fields), sorted(('xsi_type', 'contentBid'))
@@ -120,17 +120,12 @@ class DocumentTest(TestCase):
         self.assertEqual(document.c, '12')
 
     def test_fields_container(self):
-        """ get_instance method should guarantee that object contains exactly
-        same fields as described
-
-
-        """
         class TestModel(Document):
             a = SimpleField()
             b = SimpleField()
 
         source_data = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
-        obj = TestModel(**source_data)
+        obj = TestModel(source_data)
         self.assertEqual(len(obj), len(TestModel._fields))
         for field_name in obj.keys():
             self.assertIn(field_name, TestModel._fields)
@@ -394,6 +389,52 @@ class DocumentTest(TestCase):
 
         with self.assertRaises(ModelValidationError):
             User('this must be a dict')
+
+    def test_update_value(self):
+        from simplemodels.tests.stub_models import Address
+
+        address = Address(dict(street='foo'))
+        self.assertEqual(address.street, 'foo')
+        self.assertEqual(address['street'], 'foo')
+
+        address.street = 'bar'
+        self.assertEqual(address.street, 'bar')
+        self.assertEqual(address['street'], 'bar')
+
+        address['street'] = 'baz'
+        self.assertEqual(address.street, 'baz')
+        self.assertEqual(address['street'], 'baz')
+
+    def test_key_with_special_symbols(self):
+        class Foo(Document):
+            bar = CharField(name='special-attribute with unexpected symbols!')
+
+        foo = Foo({'special-attribute with unexpected symbols!': 'baz'})
+        self.assertEqual(foo.bar, 'baz')
+        self.assertEqual(foo['special-attribute with unexpected symbols!'], 'baz')
+        self.assertEqual(getattr(foo, 'special-attribute with unexpected symbols!'), 'baz')
+
+    def test_extra_attributes(self):
+        class Foo(Document):
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
+
+        data = {'hello': 'world', 'special-attribute with unexpected symbols!': 'baz'}
+        foo = Foo(data)
+
+        self.assertEqual(foo.hello, 'world')
+        self.assertEqual(foo['hello'], 'world')
+        self.assertEqual(getattr(foo, 'hello'), 'world')
+
+        self.assertEqual(foo['special-attribute with unexpected symbols!'], 'baz')
+        self.assertEqual(getattr(foo, 'special-attribute with unexpected symbols!'), 'baz')
+        self.assertDictEqual(foo.as_dict(), data)
+
+        data1 = {'some name': {'another some name': [1, 3, 5]}}
+        foo1 = Foo(data1)
+        self.assertEqual(foo1['some name'], {'another some name': [1, 3, 5]})
+        self.assertEqual(foo1['some name']['another some name'], [1, 3, 5])
+        self.assertDictEqual(foo1.as_dict(), data1)
 
 
 class DocumentMetaOptionsTest(TestCase):
