@@ -4,10 +4,9 @@ import time
 from datetime import datetime
 from unittest import TestCase
 
-from simplemodels.exceptions import ValidationError, FieldRequiredError, \
-    DefaultValueError, ImmutableDocumentError, ModelValidationError
-from simplemodels.fields import SimpleField, IntegerField, CharField, \
-    DocumentField, FloatField, BooleanField, ListField
+from simplemodels.exceptions import DefaultValueError, FieldRequiredError, ImmutableDocumentError, ModelValidationError, \
+    ValidationError
+from simplemodels.fields import BooleanField, CharField, DocumentField, FloatField, IntegerField, ListField, SimpleField
 from simplemodels.models import Document, ImmutableDocument, \
     registry
 
@@ -435,6 +434,36 @@ class DocumentTest(TestCase):
         self.assertEqual(foo1['some name'], {'another some name': [1, 3, 5]})
         self.assertEqual(foo1['some name']['another some name'], [1, 3, 5])
         self.assertDictEqual(foo1.as_dict(), data1)
+
+        data2 = {':x:': ':y:', 'foo1': foo1}
+        foo2 = Foo(data2)
+        self.assertEqual(foo2[':x:'], ':y:')
+        self.assertEqual(foo2.foo1, foo1)
+        self.assertEqual(foo2.foo1, foo1.as_dict())
+        self.assertEqual(foo2.as_dict(), {':x:': ':y:', 'foo1': data1})
+
+    def test_init_with_kwargs(self):
+        class Base(Document):
+            def __init__(self, data, password, **kwargs):
+                self.password = password
+                super(Base, self).__init__(data=data, password=password, **kwargs)
+
+        class Tag(Base):
+            value = CharField()
+
+        class TagsContainer(Base):
+            tags = ListField(of=Tag)
+
+        class User(Base):
+            name = CharField()
+            tag = DocumentField(TagsContainer)
+
+        user = User(password='secret', data={'name': 'totitata', 'tag':{ 'tags': [dict(value='foo')]}})
+        self.assertEqual(user.password, 'secret')
+        self.assertEqual(user.tag.tags[0].password, 'secret')
+        user.tag.tags.append(Tag(dict(value='bar'), 'secret'))
+        # # user.tag.tags.append(dict(value='bar'))  # THIS DOESN't WORK!!!
+        self.assertEqual(user.tag.tags[1].password, 'secret')
 
 
 class DocumentMetaOptionsTest(TestCase):
