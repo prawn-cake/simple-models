@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import warnings
-from collections import Mapping, MutableSequence, MutableMapping
+from collections import Mapping, MutableMapping, MutableSequence
 from decimal import Decimal, InvalidOperation
 
 import six
@@ -242,28 +242,24 @@ class ExtraField(SimpleField):
 
 
 class IntegerField(SimpleField):
-
     def __init__(self, **kwargs):
         self._set_default_validator(int, kwargs)
         super(IntegerField, self).__init__(**kwargs)
 
 
 class FloatField(SimpleField):
-
     def __init__(self, **kwargs):
         self._set_default_validator(float, kwargs)
         super(FloatField, self).__init__(**kwargs)
 
 
 class DecimalField(SimpleField):
-
     def __init__(self, **kwargs):
         self._set_default_validator(Decimal, kwargs)
         super(DecimalField, self).__init__(**kwargs)
 
 
 class CharField(SimpleField):
-
     def __init__(self, is_unicode=True, max_length=None, **kwargs):
         if PYTHON_VERSION == 2:
             validator = unicode if is_unicode else str
@@ -299,7 +295,6 @@ class CharField(SimpleField):
 
 
 class BooleanField(SimpleField):
-
     def __init__(self, **kwargs):
         self._set_default_validator(bool, kwargs)
         super(BooleanField, self).__init__(**kwargs)
