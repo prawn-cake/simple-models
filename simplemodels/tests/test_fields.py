@@ -64,15 +64,15 @@ class FieldsTest(unittest.TestCase):
 
     @unittest.skipIf(PYTHON_VERSION > 2, 'only py2 test')
     def test_char(self):
-        instance = self.model(char_field='abc')
+        instance = self.model(dict(char_field='abc'))
         self.assertIsInstance(instance.char_field, unicode)
         self.assertEqual(instance.char_field, 'abc')
 
-        instance = self.model(uchar_field='abc')
+        instance = self.model(dict(uchar_field='abc'))
         self.assertIsInstance(instance.uchar_field, unicode)
         self.assertEqual(instance.uchar_field, u'abc')
 
-        instance = self.model(uchar_field=1.0)
+        instance = self.model(dict(uchar_field=1.0))
         self.assertIsInstance(instance.uchar_field, unicode)
         self.assertEqual(instance.uchar_field, u'1.0')
 
