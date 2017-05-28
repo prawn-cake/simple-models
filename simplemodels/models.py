@@ -3,7 +3,7 @@ import copy
 import inspect
 import weakref
 from abc import ABCMeta
-from collections import MutableMapping
+from collections import MutableMapping, MutableSequence
 
 import six
 
@@ -121,6 +121,8 @@ class Document(MutableMapping):
         for field_name, field in self.items():
             if isinstance(field, Document):
                 field = field.as_dict()
+            elif isinstance(field, MutableSequence):
+                field = list(field)
             result[field_name] = field
 
         return result

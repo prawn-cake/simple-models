@@ -7,8 +7,8 @@ from decimal import Decimal, InvalidOperation
 import six
 
 from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import ValidationError, DefaultValueError, \
-    ImmutableFieldError, FieldRequiredError, ModelNotFoundError, FieldError
+from simplemodels.exceptions import DefaultValueError, FieldError, FieldRequiredError, ImmutableFieldError, \
+    ModelNotFoundError, ValidationError
 from simplemodels.utils import is_document
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
@@ -328,6 +328,64 @@ class DocumentField(SimpleField):
         super(DocumentField, self).__init__(**kwargs)
 
 
+class ListType(MutableSequence):
+    """
+    Special sequence class which is instantiated for `ListField`.
+
+    When you add a `ListField` and create an instance of it,
+    original field descriptor is saved in `<SomeDocument>._fields`,
+    and you field attribute is replaces with instance of `ListType`.
+    """
+
+    def __init__(self, value, of, **kwargs):
+        if not isinstance(value, MutableSequence):
+            raise ValidationError('Value %r is not a sequence' % value)
+
+        self._of = of
+        self._kwargs = kwargs
+
+        if is_document(self._of):
+            self._list = [self._of(data, **self._kwargs) for data in value]
+        else:
+            self._list = [self._of(data) for data in value]
+
+    def __len__(self):
+        return len(self._list)
+
+    def __getitem__(self, index):
+        return self._list[index]
+
+    def __setitem__(self, index, value):
+        self._list[index] = value
+
+    def __delitem__(self, index):
+        del self._list[index]
+
+    def __eq__(self, other):
+        return self._list == other
+
+    def __ne__(self, other):
+        return self._list != other
+
+    def __str__(self):
+        return self._list.__str__()
+
+    def __repr__(self):
+        return self._list.__repr__()
+
+    def sort(self, key=None, reverse=False):
+        self._list = sorted(self._list, key=key, reverse=reverse)
+
+    def insert(self, index, value):
+        from simplemodels.models import Document
+
+        if isinstance(value, (Document, ListField)):
+            value = self._of(data=value, **self._kwargs)
+        else:
+            value = self._of(value)
+        self._list.insert(index, value)
+
+
 class ListField(SimpleField, MutableSequence):
     """ List of items field"""
 
@@ -341,6 +399,8 @@ class ListField(SimpleField, MutableSequence):
         if not callable(of):
             raise ValueError('%r item type must be callable' % of)
 
+        self._of = of
+
         # NOTE: forbid to have external validators for the ListField
         if 'validators' in kwargs:
             warnings.warn(
@@ -348,24 +408,7 @@ class ListField(SimpleField, MutableSequence):
                 % self.__class__.__name__)
             kwargs.pop('validators')
 
-        def list_validator(val, **kw):
-            """Default ListField validator
-
-            :param val: list item value
-            """
-            if not isinstance(val, list):
-                raise ValidationError('Value %r is not a list' % val)
-            return val
-
-        self._set_default_validator(list_validator, kwargs)
-
-        if is_document(of):
-            document = of
-            kwargs['validators'].append(
-                lambda items, **kw: [document(val, **kw) for val in items])
-        else:
-            kwargs['validators'].append(
-                lambda items, **kw: [of(val) for val in items])
+        kwargs['validators'] = [lambda items, **kw: ListType(items, self._of, **kw)]
 
         kwargs['default'] = kwargs.get('default', [])
         super(ListField, self).__init__(**kwargs)

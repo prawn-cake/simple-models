@@ -458,7 +458,7 @@ class DocumentTest(TestCase):
             name = CharField()
             tag = DocumentField(TagsContainer)
 
-        user = User(password='secret', data={'name': 'totitata', 'tag':{ 'tags': [dict(value='foo')]}})
+        user = User(password='secret', data={'name': 'tu-ti-ta-ta', 'tag': {'tags': [dict(value='foo'), dict(value='bar')]}})
         self.assertEqual(user.password, 'secret')
         self.assertEqual(user.tag.tags[0].password, 'secret')
         user.tag.tags.append(Tag(dict(value='bar'), 'secret'))
