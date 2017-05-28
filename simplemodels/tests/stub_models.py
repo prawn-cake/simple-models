@@ -17,9 +17,11 @@ class MailboxItem(Document):
     received_at = SimpleField(default='')
     is_read = SimpleField(default=False)
 
-    def __init__(self, **kwargs):
-        super(MailboxItem, self).__init__(**kwargs)
-        if 'received_at' not in kwargs and not self.received_at:
+    def __init__(self, data=None, **kwargs):
+        if data is None:
+            data = {}
+        super(MailboxItem, self).__init__(data, **kwargs)
+        if 'received_at' not in data and not self.received_at:
             self.received_at = datetime.now()
 
     def __repr__(self):

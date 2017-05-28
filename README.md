@@ -20,8 +20,6 @@ Use cases:
 
 ## Quick start
 
-**Important:** starting from v0.5.0 the only recommended and safe way to initialize a model is via `MyModel.create({'field_1': 'val_1', ...})` method 
-
 Describe your document model, use suitable fields or nested documents 
 
     from datetime import datetime
@@ -42,7 +40,7 @@ Describe your document model, use suitable fields or nested documents
             validators=[lambda value: datetime.strptime(value, '%Y-%m-%d')])
 
 
-    person = Person.create({'name': 'John', 'address': {'street': '6th Avenue'}})
+    person = Person({'name': 'John', 'address': {'street': '6th Avenue'}})
     
     >>> person
     {'address': {'city': 'Saint-Petersburg', 'street': '6th Avenue'},
@@ -57,7 +55,7 @@ Describe your document model, use suitable fields or nested documents
     'Saint-Petersburg'
 
     >>> import json
-    >>> json.dumps(person)
+    >>> json.dumps(person.as_dict())
     '{"date_of_birth": null, "id": 0, "address": {"city": "Saint-Petersburg", "street": "6th Avenue"}, "name": "John"}'
 
 ## Fields
@@ -81,7 +79,7 @@ Example (for python 2):
     class User(Document):
         name = CharField()
         
-    >>> user = User.create({'name': 'John'})
+    >>> user = User({'name': 'John'})
     >>> isinstance(user.name, unicode)
     >>> True
     
@@ -90,7 +88,7 @@ To disable this behaviour **(not recommended)**, pass `is_unicode=False` field p
     class User(Document):
         name = CharField(is_unicode=False)
     
-    >>> user = User.create({'name': 'John'})
+    >>> user = User({'name': 'John'})
     >>> isinstance(user.name, unicode), isinstance(user.name, str) 
     >>> False, True
 
@@ -147,7 +145,7 @@ Example:
     class User(Document):
         attrs = DictField(required=True, dict_cls=OrderedDict)
         
-    user = User.create({'attrs': [('b', 1), ('a', 2)]})
+    user = User({'attrs': [('b', 1), ('a', 2)]})
 
 
 ### Meta
@@ -168,14 +166,14 @@ Example:
 
 * `ALLOW_EXTRA_FIELDS` - accept to put extra fields not defined with schema
     
-        >>> user = User.create(dict(name='Maksim', role='Admin', id=47))
+        >>> user = User(dict(name='Maksim', role='Admin', id=47))
         >>> user
         {'name': 'Maksim', 'role': 'Admin', 'id': 47}
 
 * `OMIT_MISSED_FIELDS` - by default document instance structure is built with schema-defined keys even if it's not passed ( *default* or *None* will be set for absent).
     This options allows to omit missed fields from document
         
-        >>> user = User.create({'name': 'Maksim'})
+        >>> user = User({'name': 'Maksim'})
         >>> user
         
         # Without option
@@ -250,7 +248,7 @@ If you need to make your field or whole document immutable
         id = IntegerField(immutable=True)
         name = CharField()
         
-    >>> user = User.create({'name': 'John', 'id': 1})
+    >>> user = User({'name': 'John', 'id': 1})
     >>> user.name = 'Mark'
     >>> user
     User({'name': u'Mark', 'id': 1})
@@ -265,7 +263,7 @@ If you need to make your field or whole document immutable
         id = IntegerField()
         name = CharField()
         
-    >>> user = User.create({'name': 'John', 'id': 1})
+    >>> user = User({'name': 'John', 'id': 1})
     >>> user.id = 2
     
     ImmutableDocumentError: User({'name': u'John', 'id': 1}) is immutable. Set operation is not allowed.
@@ -289,6 +287,8 @@ Warm welcome to suggestions and concerns
 
 https://github.com/prawn-cake/simple-models/issues
 
+## Contributors (without any specific order)
+- [grundic](https://github.com/grundic)
 
 ## License
 
