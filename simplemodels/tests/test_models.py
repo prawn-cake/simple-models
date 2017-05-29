@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from unittest import TestCase
 
-from simplemodels.exceptions import DefaultValueError, FieldRequiredError, ImmutableDocumentError, ModelValidationError, \
+from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, ModelValidationError, \
     ValidationError
 from simplemodels.fields import BooleanField, CharField, DocumentField, FloatField, IntegerField, ListField, SimpleField
 from simplemodels.models import Document, ImmutableDocument, \
@@ -94,7 +94,7 @@ class DocumentTest(TestCase):
         def get_id():
             return 'Not int'
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(TypeError):
             class Message(Document):
                 id = IntegerField(default=get_id)
             msg = Message()
@@ -134,7 +134,7 @@ class DocumentTest(TestCase):
             street = CharField()
 
         class User(Document):
-            id = SimpleField(validators=[int])
+            id = SimpleField(coerce_=lambda value, **kw: int(value))
             name = SimpleField(required=True, default='TestName')
             address = DocumentField(model=PostAddress)
 
@@ -165,14 +165,14 @@ class DocumentTest(TestCase):
 
     def test_model_with_validator(self):
         class Timestamp(Document):
-            hour = SimpleField(validators=[int])
-            minute = SimpleField(validators=[int])
+            hour = SimpleField(coerce_=lambda value, **kw: int(value))
+            minute = SimpleField(coerce_=lambda value, **kw: int(value))
 
         class Moment(Document):
             start_date = SimpleField(
-                validators=[lambda value: datetime.strptime(
-                    value, '%Y-%m-%dT%H:%M:%SZ')])
-            count = SimpleField(validators=[int])
+                coerce_=lambda value, **kw: datetime.strptime(
+                    value, '%Y-%m-%dT%H:%M:%SZ'))
+            count = SimpleField(coerce_=lambda value, **kw: int(value))
             timestamp = DocumentField(model=Timestamp)
             ts = DocumentField(model=Timestamp)
 
@@ -189,7 +189,7 @@ class DocumentTest(TestCase):
         self.assertIsInstance(moment.timestamp, Timestamp)
         self.assertIsInstance(moment.ts, Timestamp)
 
-        self.assertRaises(ValidationError, Moment, dict(count='a'))
+        self.assertRaises(ValueError, Moment, dict(count='a'))
 
     def test_model_verbose_name(self):
         class RateModel(Document):
@@ -294,7 +294,7 @@ class DocumentTest(TestCase):
         user = User(dict(username='John'))
         self.assertEqual(user.username, 'John')
         self.assertEqual(user.id, None)
-        self.assertEqual(user.full_name, '')
+        self.assertEqual(user.full_name, None)
 
         class BankAccountMixin(Document):
             account_id = IntegerField()
@@ -314,11 +314,11 @@ class DocumentTest(TestCase):
         self.assertIsInstance(my_user.id, float)
 
         # Check fields existence
-        self.assertEqual(my_user.full_name, '')
+        self.assertEqual(my_user.full_name, None)
         self.assertEqual(my_user.account_id, None)
         self.assertEqual(my_user.bank_name, 'Golden sink')
-        self.assertEqual(my_user, {'id': 1.0,
-                                   'full_name': '',
+        self.assertDictEqual(my_user.as_dict(), {'id': 1.0,
+                                   'full_name': None,
                                    'username': 'Max',
                                    'account_id': None,
                                    'bank_name': 'Golden sink'})
@@ -504,7 +504,7 @@ class DocumentMetaOptionsTest(TestCase):
             text = CharField(max_length=120)
 
         msg = Message()
-        self.assertEqual(msg, {'text': ''})
+        self.assertEqual(msg, {'text': None})
 
         class MessageWithoutNone(Document):
 
@@ -518,8 +518,14 @@ class DocumentMetaOptionsTest(TestCase):
         self.assertEqual(msg.text, None)
 
         msg.text = None
-        self.assertEqual(msg, {'text': ''})
-        self.assertEqual(msg.text, '')
+        # TODO: this is very tricky: `OMIT_MISSED_FIELDS` should only care
+        # about missed fields in original data or `None` should be also
+        # treated as missed value?
+        self.assertEqual(msg, {})
+        self.assertEqual(msg.text, None)
+
+        msg.text = 11**2
+        self.assertEqual(msg, dict(text='121'))
 
     def test_omit_missed_fields_attribute_with_defaults(self):
         class User(Document):
@@ -560,7 +566,7 @@ class ValidationTest(TestCase):
 
     def test_validation_with_default_values(self):
         # Expect an error on class initialization step
-        with self.assertRaises(DefaultValueError):
+        with self.assertRaises(ValueError):
             class A(Document):
                 id = IntegerField(default='a')
 

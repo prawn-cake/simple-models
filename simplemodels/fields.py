@@ -2,12 +2,12 @@
 import copy
 import warnings
 from collections import Mapping, MutableMapping, MutableSequence
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 import six
 
 from simplemodels import PYTHON_VERSION
-from simplemodels.exceptions import DefaultValueError, FieldError, FieldRequiredError, ImmutableFieldError, \
+from simplemodels.exceptions import FieldError, FieldRequiredError, ImmutableFieldError, \
     ModelNotFoundError, ValidationError
 from simplemodels.utils import is_document
 
@@ -23,20 +23,20 @@ class SimpleField(object):
     CHOICES_TYPES = (tuple, list, set)
 
     def __init__(self, default=None, required=False, choices=None, name=None,
-                 validators=None, immutable=False, **kwargs):
+                 validators=None, coerce_=None, immutable=False, **kwargs):
         """
         :param name: field name, it's set in the DocumentMeta
         :param default: default value
         :param required: is field required
         :param choices: choices list.
         :param validators: list of callable objects - validators
-        :param error_text: user-defined error text in case of errors
+        :param coerce_: custom callable for casting the value
         :param immutable: immutable field type
         :param kwargs: for future options
         """
 
-        self._name = None           # set by object holder (Document)
-        self._holder_name = None    # set by object holder (Document)
+        self._name = None  # set by object holder (Document)
+        self._holder_name = None  # set by object holder (Document)
         self._verbose_name = kwargs.get('verbose_name', name)
 
         self.required = required
@@ -48,13 +48,34 @@ class SimpleField(object):
 
         # NOTE: new feature - chain of validators
         self.validators = validators or []
+        if not isinstance(self.validators, (list, tuple, set)):
+            raise FieldError('validators must be list, tuple or set, '
+                             '%r is given' % validators)
 
+        self._add_validator(self._validate_required)
+        self._add_validator(self._validate_choices)
+
+        # TODO: is this actually used?
         self._value = None  # will be set by Document
+
+        # TODO check if callable
+        self._coerce = coerce_
 
         # Set default value
         self._set_default_value(default)
 
         self._immutable = immutable
+
+    def _typecast(self, value, func=None, **kwargs):
+        """
+        Cast given value to the field type.
+        """
+        if self._coerce is not None:
+            func = self._coerce
+
+        if func and value is not None:
+            return func(value, **kwargs)
+        return value
 
     def _set_default_value(self, value):
         """Set default value, handle mutable default parameters,
@@ -69,13 +90,10 @@ class SimpleField(object):
         else:
             self.default = value
 
-        # Validate and set default value
-        if value is not None:
-            if callable(self.default):
-                self.validate(value=self.default(), err=DefaultValueError)
-            else:
-                self.default = self.validate(value=self.default,
-                                             err=DefaultValueError)
+        # Empty `**kwargs` here because we're not setting actual value
+        # of the field, but casting default value to given type in order
+        # to check that it's compatible.
+        self._typecast(value, **{})
 
     @property
     def name(self):
@@ -91,43 +109,12 @@ class SimpleField(object):
         """
         return value
 
-    def _run_validators(self, value, err=ValidationError, **kwargs):
-        """Run validators chain and return validated (cleaned) value
-
-        :param value: field value
-        :param err: error to raise in case of validation errors
-        :return: value :raise err:
-        """
-        for validator in self.validators:
-            try:
-                if is_document(validator):
-                    # use document as a validator for nested documents
-                    doc_cls = validator
-                    value = doc_cls(data=value, **kwargs)
-                else:
-                    if isinstance(self, ListField):
-                        value = validator(value, **kwargs)
-                    else:
-                        value = validator(value)
-
-                if value is None:
-                    raise ValidationError(
-                        'validator {!r} returned None value'.format(validator))
-
-            # InvalidOperation for decimal, TypeError
-            except InvalidOperation:
-                raise err("Invalid decimal operation for '{!r}' for the field "
-                          "`{!r}`".format(value, self))
-            except (ValueError, TypeError) as exc:
-                # Accept None value for non-required fields
-                if not self.required and value is None:
-                    return value
-
-                raise err("Wrong value {!r} for the field `{!r}`: "
-                          "{}".format(value, self, exc))
-        return value
-
     def _validate_required(self, value):
+        """
+        Default validator for checking required value.
+
+        :param value: value to validate.
+        """
         if self.required:
             if value is None:
                 raise FieldRequiredError(
@@ -137,9 +124,25 @@ class SimpleField(object):
                 raise FieldRequiredError(
                     "Field '%(name)s' is empty: {%(name)r: %(value)r}"
                     % {'name': self.name, 'value': value})
+        return True
 
-    def validate(self, value, err=ValidationError, **kwargs):
-        """Main field validation method.
+    def _validate_choices(self, value):
+        """
+        Default validator for checking value within given choices.
+
+        :param value: value to validate.
+        """
+        # Check choices if passed
+        if self.choices:
+            if value not in self.choices:
+                raise ValidationError(
+                    'Value {} is restricted by choices: {}'.format(
+                        value, self.choices))
+        return True
+
+    def validate(self, value):
+        """
+        Method for validating a field.
 
         It runs several levels of validation:
           * validate required values
@@ -147,46 +150,28 @@ class SimpleField(object):
           * run choices validation if applied
 
         :param value: value to validate
-        :param err: simplemodels.exceptions.ValidationError: class
-        :return: validated value
         """
         value = self._extract_value(value=value)
 
-        # Validate required
-        self._validate_required(value=value)
-
-        # Skip validation if no validators
-        if not self.validators:
-            return value
-
         # Run validators chain
-        value = self._run_validators(value=value, err=err, **kwargs)
-
-        # Check choices if passed
-        if self.choices:
-            if value not in self.choices:
+        for validate in self.validators:
+            if not validate(value):
                 raise ValidationError(
-                    'Value {} is restricted by choices: {}'.format(
-                        value, self.choices))
-        return value
+                    "Value '{value}' of the `{name}` field haven't passed validation '{validate}'".format(
+                        value=value, name=self.name, validate=validate)
+                )
 
-    @staticmethod
-    def _set_default_validator(validator, kwargs):
-        """Helper method to add default validator used in subclasses
+    def _add_validator(self, validator):
+        """
+        Helper method to add a validator to validation chain.
 
-        :param kwargs: dict: field init key-value arguments
         :param validator: callable
         """
-        kwargs.setdefault('validators', [])
-        validators = kwargs['validators']
+        if not callable(validator):
+            raise FieldError("Validator '%r' for field '%r' is not callable!" % (validator, self))
 
-        if not isinstance(validators, (list, tuple, set)):
-            raise FieldError('validators must be list, tuple or set, '
-                             '%r is given' % validators)
-
-        if validator not in validators:
-            kwargs['validators'].append(validator)
-        return kwargs
+        if validator not in self.validators:
+            self.validators.append(validator)
 
     def __get__(self, instance, owner):
         """Descriptor getter
@@ -207,7 +192,8 @@ class SimpleField(object):
         :param instance: simplemodels.models.Document instance
         :param value: field value
         """
-        value = self.validate(value, **kwargs)
+        value = self._typecast(value, **kwargs)
+        self.validate(value)
         instance.__dict__[self.name] = value
         return value
 
@@ -242,62 +228,48 @@ class ExtraField(SimpleField):
 
 
 class IntegerField(SimpleField):
-    def __init__(self, **kwargs):
-        self._set_default_validator(int, kwargs)
-        super(IntegerField, self).__init__(**kwargs)
+    def _typecast(self, value, **kwargs):
+        return super(IntegerField, self)._typecast(value, int, **{})
 
 
 class FloatField(SimpleField):
-    def __init__(self, **kwargs):
-        self._set_default_validator(float, kwargs)
-        super(FloatField, self).__init__(**kwargs)
+    def _typecast(self, value, **kwargs):
+        return super(FloatField, self)._typecast(value, float, **{})
 
 
 class DecimalField(SimpleField):
-    def __init__(self, **kwargs):
-        self._set_default_validator(Decimal, kwargs)
-        super(DecimalField, self).__init__(**kwargs)
+    def _typecast(self, value, **kwargs):
+        return super(DecimalField, self)._typecast(value, Decimal, **{})
 
 
 class CharField(SimpleField):
+    def _typecast(self, value, **kwargs):
+        return super(CharField, self)._typecast(value, self._caster, **{})
+
     def __init__(self, is_unicode=True, max_length=None, **kwargs):
         if PYTHON_VERSION == 2:
-            validator = unicode if is_unicode else str
+            self._caster = unicode if is_unicode else str
         else:
-            validator = str
-
-        self._set_default_validator(validator, kwargs)
-
-        # Add max length validator
-        if max_length:
-            def validate_max_length(value):
-                if len(value) > max_length:
-                    raise ValidationError(
-                        'Max length is exceeded ({} < {}) for the '
-                        'field {!r}'.format(len(value), self.max_length, self))
-                return value
-
-            self.max_length = max_length
-            self._set_default_validator(
-                validator=validate_max_length,
-                kwargs=kwargs)
+            self._caster = str
 
         super(CharField, self).__init__(**kwargs)
 
-    def __set_value__(self, instance, value, **kwargs):
-        """Override method. Forbid to store None for CharField, because it
-        result to conflicts like str(None) --> 'None'
+        # Add max length validator
+        self._max_length = max_length
+        if self._max_length is not None:
+            self._add_validator(self.validate_max_length)
 
-        """
-        if value is None:
-            value = ''
-        return super(CharField, self).__set_value__(instance, value, **kwargs)
+    def validate_max_length(self, value):
+        if value and len(value) > self._max_length:
+            raise ValidationError(
+                'Max length is exceeded ({} < {}) for the '
+                'field {!r}'.format(len(value), self._max_length, self))
+        return True
 
 
 class BooleanField(SimpleField):
-    def __init__(self, **kwargs):
-        self._set_default_validator(bool, kwargs)
-        super(BooleanField, self).__init__(**kwargs)
+    def _typecast(self, value, **kwargs):
+        return super(BooleanField, self)._typecast(value, bool, **{})
 
 
 class DocumentField(SimpleField):
@@ -313,19 +285,19 @@ class DocumentField(SimpleField):
     """
 
     def __init__(self, model, **kwargs):
-        if isinstance(model, str):
-            def model_validator(kwargs):
-                from simplemodels.models import registry
-                registry_model = registry.get(model)
-                if not registry_model:
-                    raise ModelNotFoundError(
-                        "Model '%s' does not exist" % model)
-                return registry_model(kwargs)
-        else:
-            model_validator = model
-
-        self._set_default_validator(model_validator, kwargs)
+        self._model = model
         super(DocumentField, self).__init__(**kwargs)
+
+    def _typecast(self, value, **kwargs):
+        if isinstance(self._model, str):
+            from simplemodels.models import registry
+            model = registry.get(self._model)
+            if not model:
+                raise ModelNotFoundError("Model '%s' does not exist" % self._model)
+        else:
+            model = self._model
+
+        return super(DocumentField, self)._typecast(value, model, **kwargs)
 
 
 class ListType(MutableSequence):
@@ -339,42 +311,57 @@ class ListType(MutableSequence):
 
     def __init__(self, value, of, **kwargs):
         if not isinstance(value, MutableSequence):
-            raise ValidationError('Value %r is not a sequence' % value)
+            raise ValueError('Value %r is not a sequence' % value)
 
         self._of = of
+        self._raw_value = value
         self._kwargs = kwargs
+        # if `of` is string - postpone type casting
+        self._list = None if isinstance(self._of, str) else self.list
 
-        if is_document(self._of):
-            self._list = [self._of(data, **self._kwargs) for data in value]
-        else:
-            self._list = [self._of(data) for data in value]
+    @property
+    def list(self):
+        if hasattr(self, '_raw_value'):
+            if isinstance(self._of, str):
+                from simplemodels.models import registry
+                self._of = registry.get(self._of)
+                if not self._of:
+                    raise ModelNotFoundError("Model '%s' does not exist" % self._of)
+
+            if is_document(self._of):
+                self._list = [self._of(data, **self._kwargs) for data in self._raw_value]
+            else:
+                self._list = [self._of(data) for data in self._raw_value]
+            delattr(self, '_raw_value')
+
+        return self._list
 
     def __len__(self):
-        return len(self._list)
+        return len(self.list)
 
     def __getitem__(self, index):
-        return self._list[index]
+        return self.list[index]
 
     def __setitem__(self, index, value):
-        self._list[index] = value
+        self.list[index] = value
 
     def __delitem__(self, index):
-        del self._list[index]
+        del self.list[index]
 
     def __eq__(self, other):
-        return self._list == other
+        return self.list == other
 
     def __ne__(self, other):
-        return self._list != other
+        return self.list != other
 
     def __str__(self):
-        return self._list.__str__()
+        return self.list.__str__()
 
     def __repr__(self):
-        return self._list.__repr__()
+        return self.list.__repr__()
 
     def sort(self, key=None, reverse=False):
-        self._list = sorted(self._list, key=key, reverse=reverse)
+        self._list = sorted(self.list, key=key, reverse=reverse)
 
     def insert(self, index, value):
         from simplemodels.models import Document
@@ -383,7 +370,7 @@ class ListType(MutableSequence):
             value = self._of(data=value, **self._kwargs)
         else:
             value = self._of(value)
-        self._list.insert(index, value)
+        self.list.insert(index, value)
 
 
 class ListField(SimpleField, MutableSequence):
@@ -396,8 +383,6 @@ class ListField(SimpleField, MutableSequence):
                    e.g: 'str', 'lambda x: str(x).upper()'
         :param kwargs:
         """
-        if not callable(of):
-            raise ValueError('%r item type must be callable' % of)
 
         self._of = of
 
@@ -408,10 +393,10 @@ class ListField(SimpleField, MutableSequence):
                 % self.__class__.__name__)
             kwargs.pop('validators')
 
-        kwargs['validators'] = [lambda items, **kw: ListType(items, self._of, **kw)]
-
-        kwargs['default'] = kwargs.get('default', [])
         super(ListField, self).__init__(**kwargs)
+
+    def _typecast(self, value, **kwargs):
+        return ListType(value=value or [], of=self._of, **kwargs)
 
     def __getitem__(self, index):
         return self._value[index]
@@ -442,8 +427,11 @@ class DictField(SimpleField, MutableMapping):
         if not issubclass(dict_cls, Mapping):
             raise ValueError("Wrong dict_cls parameter '%r'. "
                              "Must be Mapping" % dict_cls)
-        self._set_default_validator(dict_cls, kwargs)
+        self._dict_cls = dict_cls
         super(DictField, self).__init__(**kwargs)
+
+    def _typecast(self, value, **kwargs):
+        return super(DictField, self)._typecast(value, self._dict_cls, **kwargs)
 
     def __getitem__(self, item):
         return self._value[item]
