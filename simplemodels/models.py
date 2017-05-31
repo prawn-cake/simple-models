@@ -117,15 +117,10 @@ class Document(MutableMapping):
         return len(self._fields)
 
     def as_dict(self):
-        result = dict()
-        for field_name, field in self.items():
-            if isinstance(field, Document):
-                field = field.as_dict()
-            elif isinstance(field, MutableSequence):
-                field = list(field)
-            result[field_name] = field
-
-        return result
+        return {
+            field_name: self._fields[field_name].to_python(value)
+            for field_name, value in self.items()
+        }
 
     def _prepare_fields(self, data, **kwargs):
         """Do field validations and set defaults
@@ -155,7 +150,7 @@ class Document(MutableMapping):
                     continue
                 field_obj.__set_value__(self, field_val, **kwargs)
 
-        # Create extra field if any were not
+        # Create extra fields if any were not
         # filtered by `_clean_data` method.
         for key, value in data.items():
             field_obj = ExtraField()

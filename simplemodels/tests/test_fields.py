@@ -73,6 +73,9 @@ class FieldsTest(unittest.TestCase):
         self.assertIsNone(self.model(dict(dt_field=None)).dt_field)
         self.assertIsInstance(self.model(dict(dt_field=datetime.now())).dt_field, datetime)
         self.assertIsInstance(self.model(dict(dt_field='2017-05-30T22:46:59Z')).dt_field, datetime)
+        self.assertIsInstance(self.model(dict(dt_field=1284101485)).dt_field, datetime)
+        with self.assertRaisesRegexp(ValueError, r"Incorrect type 'dict' for 'dt_field' field!"):
+            self.model(dict(dt_field=dict()))
 
     @unittest.skipIf(PYTHON_VERSION > 2, 'only py2 test')
     def test_char(self):

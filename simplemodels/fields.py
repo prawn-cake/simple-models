@@ -4,7 +4,6 @@ import warnings
 from collections import Mapping, MutableSequence
 from datetime import datetime
 from decimal import Decimal
-from functools import partial
 
 import six
 
@@ -61,14 +60,6 @@ class SimpleField(object):
 
         self._immutable = immutable
 
-    def _typecast(self, value, func=None, **kwargs):
-        """
-        Cast given value to the field type.
-        """
-        if func and value is not None:
-            return func(value, **kwargs)
-        return value
-
     def _set_default_value(self, value):
         """Set default value, handle mutable default parameters,
         delegate set callable default value to Document
@@ -81,6 +72,17 @@ class SimpleField(object):
             self._default = lambda: copy.deepcopy(value)
         else:
             self._default = value
+
+    def _typecast(self, value, func=None, **kwargs):
+        """
+        Cast given value to the field type.
+        """
+        if func and value is not None:
+            return func(value, **kwargs)
+        return value
+
+    def to_python(self, value):
+        return value
 
     @property
     def name(self):
@@ -272,18 +274,20 @@ class DateTimeField(SimpleField):
 
     def _typecast(self, value, **kwargs):
         if isinstance(value, six.string_types):
-            func = partial(
-                lambda val, fmt: datetime.strptime(val, fmt),
-                fmt=self._date_fmt
-            )
+            func = lambda val: datetime.strptime(val, self._date_fmt)
+        elif isinstance(value, (int, float)):
+            func = datetime.fromtimestamp
         elif isinstance(value, datetime) or value is None:
             func = None
         else:
             raise ValueError("Incorrect type '{type}' for '{name}' field!".format(
-                type=type(value), name=self.__class__.__name__
+                type=type(value).__name__, name=self.name
             ))
 
         return super(DateTimeField, self)._typecast(value, func, **{})
+
+    def to_python(self, value):
+        return value.strftime(self._date_fmt)
 
 
 class DocumentField(SimpleField):
@@ -312,6 +316,9 @@ class DocumentField(SimpleField):
             model = self._model
 
         return super(DocumentField, self)._typecast(value or {}, model, **kwargs)
+
+    def to_python(self, value):
+        return value.as_dict()
 
 
 class ListType(MutableSequence):
@@ -411,6 +418,11 @@ class ListField(SimpleField):
 
     def _typecast(self, value, **kwargs):
         return ListType(value=value or [], of=self._of, **kwargs)
+
+    def to_python(self, value):
+        if hasattr(self._of, 'as_dict'):
+            return [item.as_dict() for item in value]
+        return [item for item in value]
 
 
 class DictField(SimpleField):

@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import time
 from datetime import datetime
 from unittest import TestCase
 
 from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, ModelValidationError, \
     ValidationError
-from simplemodels.fields import BooleanField, CharField, DocumentField, FloatField, IntegerField, ListField, \
-    SimpleField, DateTimeField
+from simplemodels.fields import BooleanField, CharField, DateTimeField, DocumentField, FloatField, IntegerField, \
+    ListField, SimpleField
 from simplemodels.models import Document, ImmutableDocument, \
     registry
+from simplemodels.tests.stub_models import Address, Comment, Person, Post
 
 
 class DocumentTest(TestCase):
@@ -463,6 +465,112 @@ class DocumentTest(TestCase):
         user.tag.tags.append(Tag(dict(value='bar'), 'secret'))
         # # user.tag.tags.append(dict(value='bar'))  # THIS DOESN't WORK!!!
         self.assertEqual(user.tag.tags[1].password, 'secret')
+
+
+class DocumentToPythonTest(TestCase):
+    def setUp(self):
+        self._dir_path = os.path.dirname(os.path.realpath(__file__))
+
+        self.address_empty = Address()
+        self.address_1 = Address(dict(street="Park Boulevard", zip='4591'))
+        self.address_2 = Address(dict(street="Freshour Circle", zip='3329'))
+        self.address_3 = Address(dict(street="Edsel Road", zip=938))
+
+        self.person_cara = Person(dict(name='Cara', address=self.address_1, phones=['12', 21, 22]))
+        self.person_theodore = Person(dict(name='Theodore', address=self.address_2, phones=['44']))
+        self.person_fausto = Person(dict(name='Fausto', address=self.address_2, phones=[]))
+        self.person_julieta = Person(dict(name='Julieta', address=self.address_3))
+        self.person_henry = Person(dict(name='Henry', address=self.address_3, phones=[8, 3, 12, 99]))
+
+    def test_address_as_dict(self):
+        self.assertDictEqual(self.address_empty.as_dict(), {'street': None, 'zip': None})
+        self.assertDictEqual(self.address_1.as_dict(), dict(street="Park Boulevard", zip=4591))
+        self.assertDictEqual(self.address_2.as_dict(), dict(street="Freshour Circle", zip=3329))
+        self.assertDictEqual(self.address_3.as_dict(), dict(street="Edsel Road", zip=938))
+
+    def test_person_as_dict(self):
+        self.assertDictEqual(
+            self.person_cara.as_dict(),
+            dict(name='Cara', address=dict(street="Park Boulevard", zip=4591), phones=[12, 21, 22])
+        )
+        self.assertDictEqual(
+            self.person_theodore.as_dict(),
+            dict(name='Theodore', address=dict(street="Freshour Circle", zip=3329), phones=[44])
+        )
+        self.assertDictEqual(
+            self.person_fausto.as_dict(),
+            dict(name='Fausto', address=dict(street="Freshour Circle", zip=3329), phones=[])
+        )
+        self.assertDictEqual(
+            self.person_julieta.as_dict(),
+            dict(name='Julieta', address=dict(street="Edsel Road", zip=938), phones=[])
+        )
+        self.assertDictEqual(
+            self.person_henry.as_dict(),
+            dict(name='Henry', address=dict(street="Edsel Road", zip=938), phones=[8, 3, 12, 99])
+        )
+
+    def test_post_as_dict(self):
+        first_comment = Comment(dict(
+            body="I like this post!",
+            author=self.person_julieta,
+            created="2017-05-31T00:00:00Z",
+            favorite_by=[self.person_fausto, self.person_cara]
+        ))
+        second_comment = Comment(dict(
+            body="It could be better...",
+            author=self.person_cara,
+            created="2017-05-31T11:11:11Z",
+            favorite_by=[]
+        ))
+        post = Post(dict(
+            title='The Wiz',
+            author=self.person_theodore,
+            comments=[
+                first_comment,
+                second_comment,
+                dict(
+                    body="You think it's funny?!",
+                    author=self.person_henry,
+                    created="2017-05-31T22:22:22Z",
+                    favorite_by=[self.person_henry]
+                )
+            ],
+            tags=["foo", 'bar', u'baz']
+        ))
+
+        self.assertDictEqual(
+            post.as_dict(),
+            json.load(open(os.path.join(self._dir_path, 'fixtures/post_1.json')))
+        )
+
+        del post.comments[2]
+        post.comments.append(
+            dict(
+                body="What can I add more?",
+                author=dict(
+                        name='Timothy S Manning',
+                        address=self.address_1,
+                    ),
+                created="2017-05-31T12:34:56Z",
+                favorite_by=[
+                    dict(
+                        name='Shannon',
+                        address=dict(street="Red Hawk Road", zip=3015),
+                        phones=[23233, 6566]
+                    ),
+                    dict(
+                        name='Harold Jones',
+                        address=dict(street="Still Pastures Drive", zip=4030),
+                    )
+                ]
+            )
+        )
+
+        self.assertDictEqual(
+            post.as_dict(),
+            json.load(open(os.path.join(self._dir_path, 'fixtures/post_2.json')))
+        )
 
 
 class DocumentMetaOptionsTest(TestCase):
