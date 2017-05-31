@@ -95,11 +95,11 @@ class DocumentTest(TestCase):
         def get_id():
             return 'Not int'
 
-        with self.assertRaises(TypeError):
-            class Message(Document):
-                id = IntegerField(default=get_id)
-            msg = Message()
-            self.assertIsNone(msg)
+        class Message(Document):
+            id = IntegerField(default=get_id)
+
+        with self.assertRaises(ValueError):
+            Message()
 
     def test_getting_classname(self):
         from simplemodels.tests.stub_models import Address
@@ -564,10 +564,13 @@ class ValidationTest(TestCase):
             self.assertIsNone(p)
 
     def test_validation_with_default_values(self):
-        # Expect an error on class initialization step
+
+        class A(Document):
+            id = IntegerField(default='a')
+
         with self.assertRaises(ValueError):
-            class A(Document):
-                id = IntegerField(default='a')
+            # Expect an error creating an instance of class
+            A()
 
         # Accepted case: string to int will be forced
         class B(Document):

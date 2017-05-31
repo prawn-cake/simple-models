@@ -82,11 +82,6 @@ class SimpleField(object):
         else:
             self._default = value
 
-        # Empty `**kwargs` here because we're not setting actual value
-        # of the field, but casting default value to given type, in order
-        # to check that it's compatible.
-        self._typecast(value, **{})
-
     @property
     def name(self):
         return self._verbose_name or self._name
@@ -316,7 +311,7 @@ class DocumentField(SimpleField):
         else:
             model = self._model
 
-        return super(DocumentField, self)._typecast(value, model, **kwargs)
+        return super(DocumentField, self)._typecast(value or {}, model, **kwargs)
 
 
 class ListType(MutableSequence):

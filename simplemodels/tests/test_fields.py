@@ -281,10 +281,11 @@ class DocumentFieldTest(unittest.TestCase):
         self.assertEqual(user.address.street, 'Morison street')
 
     def test_str_model_lookup_error(self):
-        with self.assertRaises(ModelNotFoundError) as err:
-            class User(Document):
-                address = DocumentField(model='Address1')
+        class User(Document):
+            address = DocumentField(model='Address1')
 
+        with self.assertRaises(ModelNotFoundError) as err:
+            User()
             self.assertIn("Model 'Address1' does not exist", err)
 
 

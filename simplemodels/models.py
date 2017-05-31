@@ -146,10 +146,6 @@ class Document(MutableMapping):
                 data.pop(field_name)
                 # set presented field
                 field_obj.__set_value__(self, field_val, **kwargs)
-
-            # build empty nested document
-            elif issubclass(type(field_obj), DocumentField):
-                field_obj.__set_value__(self, {}, **kwargs)
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta['OMIT_MISSED_FIELDS']:
