@@ -6,7 +6,8 @@ from unittest import TestCase
 
 from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, ModelValidationError, \
     ValidationError
-from simplemodels.fields import BooleanField, CharField, DocumentField, FloatField, IntegerField, ListField, SimpleField
+from simplemodels.fields import BooleanField, CharField, DocumentField, FloatField, IntegerField, ListField, \
+    SimpleField, DateTimeField
 from simplemodels.models import Document, ImmutableDocument, \
     registry
 
@@ -134,7 +135,7 @@ class DocumentTest(TestCase):
             street = CharField()
 
         class User(Document):
-            id = SimpleField(coerce_=lambda value, **kw: int(value))
+            id = IntegerField()
             name = SimpleField(required=True, default='TestName')
             address = DocumentField(model=PostAddress)
 
@@ -165,14 +166,12 @@ class DocumentTest(TestCase):
 
     def test_model_with_validator(self):
         class Timestamp(Document):
-            hour = SimpleField(coerce_=lambda value, **kw: int(value))
-            minute = SimpleField(coerce_=lambda value, **kw: int(value))
+            hour = IntegerField()
+            minute = IntegerField()
 
         class Moment(Document):
-            start_date = SimpleField(
-                coerce_=lambda value, **kw: datetime.strptime(
-                    value, '%Y-%m-%dT%H:%M:%SZ'))
-            count = SimpleField(coerce_=lambda value, **kw: int(value))
+            start_date = DateTimeField()
+            count = IntegerField()
             timestamp = DocumentField(model=Timestamp)
             ts = DocumentField(model=Timestamp)
 

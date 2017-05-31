@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import copy
 import warnings
-from collections import Mapping, MutableMapping, MutableSequence
+from collections import Mapping, MutableSequence
+from datetime import datetime
 from decimal import Decimal
+from functools import partial
 
 import six
 
@@ -12,8 +14,8 @@ from simplemodels.exceptions import FieldError, FieldRequiredError, ImmutableFie
 from simplemodels.utils import is_document
 
 __all__ = ['SimpleField', 'IntegerField', 'FloatField', 'DecimalField',
-           'CharField', 'BooleanField', 'ListField', 'DocumentField',
-           'DictField']
+           'CharField', 'BooleanField', 'DateTimeField', 'ListField',
+           'DocumentField', 'DictField']
 
 
 class SimpleField(object):
@@ -23,14 +25,13 @@ class SimpleField(object):
     CHOICES_TYPES = (tuple, list, set)
 
     def __init__(self, default=None, required=False, choices=None, name=None,
-                 validators=None, coerce_=None, immutable=False, **kwargs):
+                 validators=None, immutable=False, **kwargs):
         """
         :param name: field name, it's set in the DocumentMeta
         :param default: default value
         :param required: is field required
         :param choices: choices list.
         :param validators: list of callable objects - validators
-        :param coerce_: custom callable for casting the value
         :param immutable: immutable field type
         :param kwargs: for future options
         """
@@ -55,12 +56,6 @@ class SimpleField(object):
         self._add_validator(self._validate_required)
         self._add_validator(self._validate_choices)
 
-        # TODO: is this actually used?
-        self._value = None  # will be set by Document
-
-        # TODO check if callable
-        self._coerce = coerce_
-
         # Set default value
         self._set_default_value(default)
 
@@ -70,9 +65,6 @@ class SimpleField(object):
         """
         Cast given value to the field type.
         """
-        if self._coerce is not None:
-            func = self._coerce
-
         if func and value is not None:
             return func(value, **kwargs)
         return value
@@ -86,18 +78,22 @@ class SimpleField(object):
         # Make a deep copy for mutable default values by setting it as a
         # callable lambda function, see the code below
         if isinstance(value, SimpleField.MUTABLE_TYPES):
-            self.default = lambda: copy.deepcopy(value)
+            self._default = lambda: copy.deepcopy(value)
         else:
-            self.default = value
+            self._default = value
 
         # Empty `**kwargs` here because we're not setting actual value
-        # of the field, but casting default value to given type in order
+        # of the field, but casting default value to given type, in order
         # to check that it's compatible.
         self._typecast(value, **{})
 
     @property
     def name(self):
         return self._verbose_name or self._name
+
+    @property
+    def default(self):
+        return self._default() if callable(self._default) else self._default
 
     def _extract_value(self, value):
         """Extract value helper.
@@ -272,6 +268,29 @@ class BooleanField(SimpleField):
         return super(BooleanField, self)._typecast(value, bool, **{})
 
 
+class DateTimeField(SimpleField):
+    DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+
+    def __init__(self, date_fmt=None, **kwargs):
+        self._date_fmt = date_fmt or self.DATE_FORMAT
+        super(DateTimeField, self).__init__(**kwargs)
+
+    def _typecast(self, value, **kwargs):
+        if isinstance(value, six.string_types):
+            func = partial(
+                lambda val, fmt: datetime.strptime(val, fmt),
+                fmt=self._date_fmt
+            )
+        elif isinstance(value, datetime) or value is None:
+            func = None
+        else:
+            raise ValueError("Incorrect type '{type}' for '{name}' field!".format(
+                type=type(value), name=self.__class__.__name__
+            ))
+
+        return super(DateTimeField, self)._typecast(value, func, **{})
+
+
 class DocumentField(SimpleField):
     """Embedded document field.
 
@@ -373,7 +392,7 @@ class ListType(MutableSequence):
         self.list.insert(index, value)
 
 
-class ListField(SimpleField, MutableSequence):
+class ListField(SimpleField):
     """ List of items field"""
 
     def __init__(self, of, **kwargs):
@@ -398,28 +417,8 @@ class ListField(SimpleField, MutableSequence):
     def _typecast(self, value, **kwargs):
         return ListType(value=value or [], of=self._of, **kwargs)
 
-    def __getitem__(self, index):
-        return self._value[index]
 
-    def insert(self, index, value):
-        value = self.validate(value)
-        self._value.insert(index, value)
-
-    def append(self, item):
-        value = self.validate(item)
-        return self._value.append(value)
-
-    def __delitem__(self, index):
-        del self._value[index]
-
-    def __setitem__(self, index, value):
-        self._value[index] = value
-
-    def __len__(self):
-        return len(self._value)
-
-
-class DictField(SimpleField, MutableMapping):
+class DictField(SimpleField):
     """ Dictionary field. Useful when you want to be more specific than just
     using SimpleField"""
 
@@ -431,19 +430,4 @@ class DictField(SimpleField, MutableMapping):
         super(DictField, self).__init__(**kwargs)
 
     def _typecast(self, value, **kwargs):
-        return super(DictField, self)._typecast(value, self._dict_cls, **kwargs)
-
-    def __getitem__(self, item):
-        return self._value[item]
-
-    def __setitem__(self, key, value):
-        self._value[key] = value
-
-    def __iter__(self):
-        return iter(self._value)
-
-    def __delitem__(self, key):
-        del self._value[key]
-
-    def __len__(self):
-        return len(self._value)
+        return super(DictField, self)._typecast(value, self._dict_cls, **{})

@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import unittest
-from collections import OrderedDict
+from collections import OrderedDict, Sequence
 from decimal import Decimal, InvalidOperation
 
 import six
+from datetime import datetime
 
 from simplemodels import PYTHON_VERSION
 from simplemodels.exceptions import FieldError, FieldRequiredError, ImmutableFieldError, ModelNotFoundError, \
     ValidationError
 from simplemodels.fields import BooleanField, CharField, DecimalField, DictField, DocumentField, FloatField, \
-    IntegerField, ListField, SimpleField
+    IntegerField, ListField, SimpleField, DateTimeField
 from simplemodels.models import Document
 
 
@@ -27,6 +28,7 @@ class FieldsTest(unittest.TestCase):
             float_field = FloatField()
             decimal_field = DecimalField()
             bool_field = BooleanField()
+            dt_field = DateTimeField()
             char_field = CharField()
             uchar_field = CharField(is_unicode=True)
             doc_field = DocumentField(model=SubDocument)
@@ -66,6 +68,11 @@ class FieldsTest(unittest.TestCase):
             instance = self.model(dict(bool_field=val))
             self.assertNotIsInstance(instance.bool_field, bool)
             self.assertEqual(instance.bool_field, None)
+
+    def test_datetime(self):
+        self.assertIsNone(self.model(dict(dt_field=None)).dt_field)
+        self.assertIsInstance(self.model(dict(dt_field=datetime.now())).dt_field, datetime)
+        self.assertIsInstance(self.model(dict(dt_field='2017-05-30T22:46:59Z')).dt_field, datetime)
 
     @unittest.skipIf(PYTHON_VERSION > 2, 'only py2 test')
     def test_char(self):
@@ -152,12 +159,11 @@ class FieldsTest(unittest.TestCase):
 
         class Post(Document):
             text = CharField()
-            viewed = SimpleField(
-                coerce_=lambda items, **kw: [User(item, **kw) for item in items or []])
+            viewed = ListField(of=User)
 
         post = Post(dict(text='abc', viewed=[{'name': 'John'}]))
         self.assertIsInstance(post, Post)
-        self.assertIsInstance(post.viewed, list)
+        self.assertIsInstance(post.viewed, Sequence)
 
         for user in post.viewed:
             self.assertIsInstance(user, User)

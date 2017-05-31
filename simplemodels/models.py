@@ -137,14 +137,7 @@ class Document(MutableMapping):
         # It validates values on set, check fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
 
-            # TODO: make default property and move all logic about callable into it.
-            # Get field value or set default
-            default_val = getattr(field_obj, 'default')
-
-            field_val = data.get(field_name)
-            if field_val is None:
-                field_val = default_val() if callable(default_val) \
-                    else default_val
+            field_val = data.get(field_name, field_obj.default)
 
             # Build model structure
             if field_name in data:
@@ -154,7 +147,6 @@ class Document(MutableMapping):
                 # set presented field
                 field_obj.__set_value__(self, field_val, **kwargs)
 
-            # TODO: why do we need to do this?
             # build empty nested document
             elif issubclass(type(field_obj), DocumentField):
                 field_obj.__set_value__(self, {}, **kwargs)
