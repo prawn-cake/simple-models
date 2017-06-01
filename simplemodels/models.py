@@ -3,7 +3,7 @@ import copy
 import inspect
 import weakref
 from abc import ABCMeta
-from collections import MutableMapping
+from collections import MutableMapping, MutableSequence
 
 import six
 
@@ -117,13 +117,10 @@ class Document(MutableMapping):
         return len(self._fields)
 
     def as_dict(self):
-        result = dict()
-        for field_name, field in self.items():
-            if isinstance(field, Document):
-                field = field.as_dict()
-            result[field_name] = field
-
-        return result
+        return {
+            field_name: self._fields[field_name].to_python(value)
+            for field_name, value in self.items()
+        }
 
     def _prepare_fields(self, data, **kwargs):
         """Do field validations and set defaults
@@ -135,13 +132,7 @@ class Document(MutableMapping):
         # It validates values on set, check fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
 
-            # Get field value or set default
-            default_val = getattr(field_obj, 'default')
-
-            field_val = data.get(field_name)
-            if field_val is None:
-                field_val = default_val() if callable(default_val) \
-                    else default_val
+            field_val = data.get(field_name, field_obj.default)
 
             # Build model structure
             if field_name in data:
@@ -149,14 +140,7 @@ class Document(MutableMapping):
                 # only extra fields would left.
                 data.pop(field_name)
                 # set presented field
-                if issubclass(type(field_obj), (DocumentField, ListField)):
-                    field_obj.__set_value__(self, field_val, **kwargs)
-                else:
-                    field_obj.__set_value__(self, field_val)
-
-            # build empty nested document
-            elif issubclass(type(field_obj), DocumentField):
-                field_obj.__set_value__(self, {}, **kwargs)
+                field_obj.__set_value__(self, field_val, **kwargs)
             else:
                 # field is not presented in the given init parameters
                 if field_val is None and self._meta['OMIT_MISSED_FIELDS']:
@@ -166,7 +150,7 @@ class Document(MutableMapping):
                     continue
                 field_obj.__set_value__(self, field_val, **kwargs)
 
-        # Create extra field if any were not
+        # Create extra fields if any were not
         # filtered by `_clean_data` method.
         for key, value in data.items():
             field_obj = ExtraField()

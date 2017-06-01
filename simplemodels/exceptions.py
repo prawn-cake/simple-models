@@ -40,11 +40,6 @@ class FieldRequiredError(FieldError):
     pass
 
 
-class DefaultValueError(FieldError):
-    """Raised when default value is wrong"""
-    pass
-
-
 class ImmutableDocumentError(ValidationError):
     """Raised when try to set any field in the immutable document"""
     pass
