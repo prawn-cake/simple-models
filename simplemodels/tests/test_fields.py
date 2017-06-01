@@ -51,7 +51,8 @@ class FieldsTest(unittest.TestCase):
         instance = self.model(dict(decimal_field=1.0))
         self.assertIsInstance(instance.decimal_field, Decimal)
         self.assertEqual(instance.decimal_field, Decimal('1.0'))
-        self.assertRaises(InvalidOperation, self.model, dict(decimal_field='a'))
+        self.assertRaises(
+            InvalidOperation, self.model, dict(decimal_field='a'))
 
     def test_bool(self):
         for val in (1, True, 'abc'):
@@ -71,10 +72,17 @@ class FieldsTest(unittest.TestCase):
 
     def test_datetime(self):
         self.assertIsNone(self.model(dict(dt_field=None)).dt_field)
-        self.assertIsInstance(self.model(dict(dt_field=datetime.now())).dt_field, datetime)
-        self.assertIsInstance(self.model(dict(dt_field='2017-05-30T22:46:59Z')).dt_field, datetime)
-        self.assertIsInstance(self.model(dict(dt_field=1284101485)).dt_field, datetime)
-        with self.assertRaisesRegexp(ValueError, r"Incorrect type 'dict' for 'dt_field' field!"):
+        self.assertIsInstance(
+            self.model(dict(dt_field=datetime.now())).dt_field,
+            datetime)
+        self.assertIsInstance(
+            self.model(dict(dt_field='2017-05-30T22:46:59Z')).dt_field,
+            datetime)
+        self.assertIsInstance(
+            self.model(dict(dt_field=1284101485)).dt_field,
+            datetime)
+        with self.assertRaisesRegexp(
+                ValueError, r"Incorrect type 'dict' for 'dt_field' field!"):
             self.model(dict(dt_field=dict()))
 
     @unittest.skipIf(PYTHON_VERSION > 2, 'only py2 test')
@@ -350,10 +358,10 @@ class ListFieldTest(unittest.TestCase):
             comments = ListField(of=Comment)
 
         post = Post({'text': 'my post',
-                            'comments': [
-                                {'text': 'Comment #1'},
-                                {'text': 'Comment #2'}]
-                            })
+                     'comments': [
+                         {'text': 'Comment #1'},
+                         {'text': 'Comment #2'}]
+                     })
         self.assertEqual(len(post.comments), 2)
         self.assertEqual(len(post.comments[:]), 2)
 
@@ -367,7 +375,8 @@ class ListFieldTest(unittest.TestCase):
 
         post.comments.append(dict(text='This is the last'))
         self.assertEqual(post.comments[-1], {'text': 'This is the last'})
-        self.assertEqual(post.comments[-1], Comment({'text': 'This is the last'}))
+        self.assertEqual(post.comments[-1],
+                         Comment({'text': 'This is the last'}))
 
         self.assertTrue({'text': 'This is the last'} in post.comments)
         self.assertTrue(Comment({'text': 'This is the last'}) in post.comments)
@@ -429,7 +438,10 @@ class ListFieldTest(unittest.TestCase):
         user.comments.insert(0, Comment({'body': 'The very first comment'}))
 
         self.assertIsInstance(user, User)
-        self.assertEqual(user.comments, [{'body': 'The very first comment'}] + comments + [{'body': 'Last comment'}])
+        self.assertEqual(
+            user.comments,
+            [{'body': 'The very first comment'}] + comments
+            + [{'body': 'Last comment'}])
         for comment in user.comments:
             self.assertTrue(comment.body)
             self.assertIsInstance(comment, Comment)
@@ -463,9 +475,16 @@ class ListFieldTest(unittest.TestCase):
             text = CharField()
             tags = ListField(of=str, required=True)
 
-        post1 = Post(dict(text='Post #1', tags=None)) # if the field is `required`, should not it fail here?
+        # if the field is `required`, should not it fail here?
+        post1 = Post(dict(text='Post #1', tags=None))
         post2 = Post(dict(text='Post #2', tags=[]))
-        post3 = Post(dict(text='Post #2', tags=['python', 'Ruby', 'Java Script']))
+        post3 = Post(
+            dict(
+                text='Post #2',
+                tags=[
+                    'python',
+                    'Ruby',
+                    'Java Script']))
 
         post1.tags.append('Java')
         post2.tags.extend(['C++', 'Go'])

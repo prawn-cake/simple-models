@@ -67,7 +67,7 @@ class SimpleField(object):
         :param value: default value
         """
         # Make a deep copy for mutable default values by setting it as a
-        # callable lambda function, see the code below
+        # callable lambda function
         if isinstance(value, SimpleField.MUTABLE_TYPES):
             self._default = lambda: copy.deepcopy(value)
         else:
@@ -161,7 +161,9 @@ class SimpleField(object):
         :param validator: callable
         """
         if not callable(validator):
-            raise FieldError("Validator '%r' for field '%r' is not callable!" % (validator, self))
+            raise FieldError(
+                "Validator '%r' for field '%r' is not callable!" %
+                (validator, self))
 
         if validator not in self.validators:
             self.validators.append(validator)
@@ -221,21 +223,25 @@ class ExtraField(SimpleField):
 
 
 class IntegerField(SimpleField):
+
     def _typecast(self, value, **kwargs):
         return super(IntegerField, self)._typecast(value, int, **{})
 
 
 class FloatField(SimpleField):
+
     def _typecast(self, value, **kwargs):
         return super(FloatField, self)._typecast(value, float, **{})
 
 
 class DecimalField(SimpleField):
+
     def _typecast(self, value, **kwargs):
         return super(DecimalField, self)._typecast(value, Decimal, **{})
 
 
 class CharField(SimpleField):
+
     def _typecast(self, value, **kwargs):
         return super(CharField, self)._typecast(value, self._caster, **{})
 
@@ -261,6 +267,7 @@ class CharField(SimpleField):
 
 
 class BooleanField(SimpleField):
+
     def _typecast(self, value, **kwargs):
         return super(BooleanField, self)._typecast(value, bool, **{})
 
@@ -311,11 +318,14 @@ class DocumentField(SimpleField):
             from simplemodels.models import registry
             model = registry.get(self._model)
             if not model:
-                raise ModelNotFoundError("Model '%s' does not exist" % self._model)
+                raise ModelNotFoundError(
+                    "Model '%s' does not exist" %
+                    self._model)
         else:
             model = self._model
 
-        return super(DocumentField, self)._typecast(value or {}, model, **kwargs)
+        return super(DocumentField, self)._typecast(
+            value or {}, model, **kwargs)
 
     def to_python(self, value):
         return value.as_dict()
@@ -347,10 +357,12 @@ class ListType(MutableSequence):
                 from simplemodels.models import registry
                 self._of = registry.get(self._of)
                 if not self._of:
-                    raise ModelNotFoundError("Model '%s' does not exist" % self._of)
+                    raise ModelNotFoundError(
+                        "Model '%s' does not exist" % self._of)
 
             if is_document(self._of):
-                self._list = [self._of(data, **self._kwargs) for data in self._raw_value]
+                self._list = [self._of(data, **self._kwargs)
+                              for data in self._raw_value]
             else:
                 self._list = [self._of(data) for data in self._raw_value]
             delattr(self, '_raw_value')

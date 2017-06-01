@@ -1,17 +1,26 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import os.path as op
 import time
 from datetime import datetime
 from unittest import TestCase
 
-from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, ModelValidationError, \
-    ValidationError
-from simplemodels.fields import BooleanField, CharField, DateTimeField, DocumentField, FloatField, IntegerField, \
-    ListField, SimpleField
-from simplemodels.models import Document, ImmutableDocument, \
-    registry
+from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, \
+    ModelValidationError, ValidationError
+from simplemodels.fields import BooleanField, CharField, DateTimeField, \
+    DocumentField, FloatField, IntegerField, ListField, SimpleField
+from simplemodels.models import Document, ImmutableDocument, registry
 from simplemodels.tests.stub_models import Address, Comment, Person, Post
+
+
+CUR_DIR = op.abspath(op.dirname(__file__))
+FIXTURES_DIR = op.join(CUR_DIR, 'fixtures')
+
+
+def get_json_fixture(fixture_name):
+    with open(op.join(FIXTURES_DIR, fixture_name)) as fd:
+        return json.load(fd)
 
 
 class DocumentTest(TestCase):
@@ -141,7 +150,13 @@ class DocumentTest(TestCase):
             name = SimpleField(required=True, default='TestName')
             address = DocumentField(model=PostAddress)
 
-        a = User(dict(id='1', name='Maks', address=PostAddress(dict(street=999))))
+        a = User(
+            dict(
+                id='1',
+                name='Maks',
+                address=PostAddress(
+                    dict(
+                        street=999))))
         self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
@@ -319,10 +334,10 @@ class DocumentTest(TestCase):
         self.assertEqual(my_user.account_id, None)
         self.assertEqual(my_user.bank_name, 'Golden sink')
         self.assertDictEqual(my_user.as_dict(), {'id': 1.0,
-                                   'full_name': None,
-                                   'username': 'Max',
-                                   'account_id': None,
-                                   'bank_name': 'Golden sink'})
+                                                 'full_name': None,
+                                                 'username': 'Max',
+                                                 'account_id': None,
+                                                 'bank_name': 'Golden sink'})
 
     def test_post_model_validation(self):
         class User(Document):
@@ -411,23 +426,36 @@ class DocumentTest(TestCase):
 
         foo = Foo({'special-attribute with unexpected symbols!': 'baz'})
         self.assertEqual(foo.bar, 'baz')
-        self.assertEqual(foo['special-attribute with unexpected symbols!'], 'baz')
-        self.assertEqual(getattr(foo, 'special-attribute with unexpected symbols!'), 'baz')
+        self.assertEqual(
+            foo['special-attribute with unexpected symbols!'], 'baz')
+        self.assertEqual(
+            getattr(
+                foo,
+                'special-attribute with unexpected symbols!'),
+            'baz')
 
     def test_extra_attributes(self):
         class Foo(Document):
+
             class Meta:
                 ALLOW_EXTRA_FIELDS = True
 
-        data = {'hello': 'world', 'special-attribute with unexpected symbols!': 'baz'}
+        data = {
+            'hello': 'world',
+            'special-attribute with unexpected symbols!': 'baz'}
         foo = Foo(data)
 
         self.assertEqual(foo.hello, 'world')
         self.assertEqual(foo['hello'], 'world')
         self.assertEqual(getattr(foo, 'hello'), 'world')
 
-        self.assertEqual(foo['special-attribute with unexpected symbols!'], 'baz')
-        self.assertEqual(getattr(foo, 'special-attribute with unexpected symbols!'), 'baz')
+        self.assertEqual(
+            foo['special-attribute with unexpected symbols!'], 'baz')
+        self.assertEqual(
+            getattr(
+                foo,
+                'special-attribute with unexpected symbols!'),
+            'baz')
         self.assertDictEqual(foo.as_dict(), data)
 
         data1 = {'some name': {'another some name': [1, 3, 5]}}
@@ -445,6 +473,7 @@ class DocumentTest(TestCase):
 
     def test_init_with_kwargs(self):
         class Base(Document):
+
             def __init__(self, data, password, **kwargs):
                 self.password = password
                 super(Base, self).__init__(data=data, password=password, **kwargs)
@@ -459,7 +488,9 @@ class DocumentTest(TestCase):
             name = CharField()
             tag = DocumentField(TagsContainer)
 
-        user = User(password='secret', data={'name': 'tu-ti-ta-ta', 'tag': {'tags': [dict(value='foo'), dict(value='bar')]}})
+        user = User(password='secret',
+                    data={'name': 'tu-ti-ta-ta',
+                          'tag': {'tags': [dict(value='foo'), dict(value='bar')]}})
         self.assertEqual(user.password, 'secret')
         self.assertEqual(user.tag.tags[0].password, 'secret')
         user.tag.tags.append(Tag(dict(value='bar'), 'secret'))
@@ -468,46 +499,73 @@ class DocumentTest(TestCase):
 
 
 class DocumentToPythonTest(TestCase):
-    def setUp(self):
-        self._dir_path = os.path.dirname(os.path.realpath(__file__))
 
+    def setUp(self):
         self.address_empty = Address()
         self.address_1 = Address(dict(street="Park Boulevard", zip='4591'))
         self.address_2 = Address(dict(street="Freshour Circle", zip='3329'))
         self.address_3 = Address(dict(street="Edsel Road", zip=938))
 
-        self.person_cara = Person(dict(name='Cara', address=self.address_1, phones=['12', 21, 22]))
-        self.person_theodore = Person(dict(name='Theodore', address=self.address_2, phones=['44']))
-        self.person_fausto = Person(dict(name='Fausto', address=self.address_2, phones=[]))
-        self.person_julieta = Person(dict(name='Julieta', address=self.address_3))
-        self.person_henry = Person(dict(name='Henry', address=self.address_3, phones=[8, 3, 12, 99]))
+        self.person_cara = Person(
+            dict(name='Cara', address=self.address_1, phones=['12', 21, 22]))
+        self.person_theodore = Person(
+            dict(name='Theodore', address=self.address_2, phones=['44']))
+        self.person_fausto = Person(
+            dict(name='Fausto', address=self.address_2, phones=[]))
+        self.person_julieta = Person(
+            dict(name='Julieta', address=self.address_3))
+        self.person_henry = Person(
+            dict(name='Henry', address=self.address_3, phones=[8, 3, 12, 99]))
 
     def test_address_as_dict(self):
-        self.assertDictEqual(self.address_empty.as_dict(), {'street': None, 'zip': None})
-        self.assertDictEqual(self.address_1.as_dict(), dict(street="Park Boulevard", zip=4591))
-        self.assertDictEqual(self.address_2.as_dict(), dict(street="Freshour Circle", zip=3329))
-        self.assertDictEqual(self.address_3.as_dict(), dict(street="Edsel Road", zip=938))
+        self.assertDictEqual(
+            self.address_empty.as_dict(), {'street': None, 'zip': None})
+        self.assertDictEqual(
+            self.address_1.as_dict(), dict(street="Park Boulevard", zip=4591))
+        self.assertDictEqual(
+            self.address_2.as_dict(), dict(street="Freshour Circle", zip=3329))
+        self.assertDictEqual(
+            self.address_3.as_dict(), dict(street="Edsel Road", zip=938))
 
     def test_person_as_dict(self):
         self.assertDictEqual(
             self.person_cara.as_dict(),
-            dict(name='Cara', address=dict(street="Park Boulevard", zip=4591), phones=[12, 21, 22])
+            dict(name='Cara',
+                 address=dict(street="Park Boulevard", zip=4591),
+                 phones=[12, 21, 22])
         )
         self.assertDictEqual(
             self.person_theodore.as_dict(),
-            dict(name='Theodore', address=dict(street="Freshour Circle", zip=3329), phones=[44])
+            dict(
+                name='Theodore',
+                address=dict(
+                    street="Freshour Circle",
+                    zip=3329),
+                phones=[44])
         )
         self.assertDictEqual(
             self.person_fausto.as_dict(),
-            dict(name='Fausto', address=dict(street="Freshour Circle", zip=3329), phones=[])
+            dict(
+                name='Fausto',
+                address=dict(
+                    street="Freshour Circle",
+                    zip=3329),
+                phones=[])
         )
         self.assertDictEqual(
             self.person_julieta.as_dict(),
-            dict(name='Julieta', address=dict(street="Edsel Road", zip=938), phones=[])
+            dict(
+                name='Julieta',
+                address=dict(
+                    street="Edsel Road",
+                    zip=938),
+                phones=[])
         )
         self.assertDictEqual(
             self.person_henry.as_dict(),
-            dict(name='Henry', address=dict(street="Edsel Road", zip=938), phones=[8, 3, 12, 99])
+            dict(name='Henry',
+                 address=dict(street="Edsel Road", zip=938),
+                 phones=[8, 3, 12, 99])
         )
 
     def test_post_as_dict(self):
@@ -539,19 +597,16 @@ class DocumentToPythonTest(TestCase):
             tags=["foo", 'bar', u'baz']
         ))
 
-        self.assertDictEqual(
-            post.as_dict(),
-            json.load(open(os.path.join(self._dir_path, 'fixtures/post_1.json')))
-        )
+        self.assertDictEqual(post.as_dict(), get_json_fixture('post_1.json'))
 
         del post.comments[2]
         post.comments.append(
             dict(
                 body="What can I add more?",
                 author=dict(
-                        name='Timothy S Manning',
-                        address=self.address_1,
-                    ),
+                    name='Timothy S Manning',
+                    address=self.address_1,
+                ),
                 created="2017-05-31T12:34:56Z",
                 favorite_by=[
                     dict(
@@ -567,10 +622,7 @@ class DocumentToPythonTest(TestCase):
             )
         )
 
-        self.assertDictEqual(
-            post.as_dict(),
-            json.load(open(os.path.join(self._dir_path, 'fixtures/post_2.json')))
-        )
+        self.assertDictEqual(post.as_dict(), get_json_fixture('post_2.json'))
 
 
 class DocumentMetaOptionsTest(TestCase):

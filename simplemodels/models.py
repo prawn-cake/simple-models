@@ -3,13 +3,13 @@ import copy
 import inspect
 import weakref
 from abc import ABCMeta
-from collections import MutableMapping, MutableSequence
+from collections import MutableMapping
 
 import six
 
 from simplemodels.exceptions import ImmutableDocumentError, \
     ModelValidationError
-from simplemodels.fields import DocumentField, ExtraField, ListField, SimpleField
+from simplemodels.fields import ExtraField, SimpleField
 
 __all__ = ['Document', 'ImmutableDocument']
 
@@ -84,7 +84,9 @@ class Document(MutableMapping):
             self._fields = copy.deepcopy(self._fields)
 
         if not isinstance(data, MutableMapping):
-            raise ModelValidationError("Data must be instance of mapping, but got '%s'!" % type(data))
+            raise ModelValidationError(
+                "Data must be instance of mapping, but got '%s'!" %
+                type(data))
 
         data = copy.deepcopy(data)
 
@@ -103,8 +105,7 @@ class Document(MutableMapping):
         delattr(self, name)
 
     def __iter__(self):
-        """
-        Iterator over available field names of the Document.
+        """Iterator over available field names of the Document.
 
         Fields, which values are `None` will be returned only
         in case `OMIT_MISSED_FIELDS` meta variable is `False`.
@@ -150,8 +151,7 @@ class Document(MutableMapping):
                     continue
                 field_obj.__set_value__(self, field_val, **kwargs)
 
-        # Create extra fields if any were not
-        # filtered by `_clean_data` method.
+        # Create extra fields if any were not filtered by `_clean_data` method.
         for key, value in data.items():
             field_obj = ExtraField()
             field_obj._name = key
