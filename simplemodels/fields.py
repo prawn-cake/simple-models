@@ -294,7 +294,8 @@ class DateTimeField(SimpleField):
         return super(DateTimeField, self)._typecast(value, func, **{})
 
     def to_python(self, value):
-        return value.strftime(self._date_fmt)
+        if value is not None:
+            return value.strftime(self._date_fmt)
 
 
 class DocumentField(SimpleField):
