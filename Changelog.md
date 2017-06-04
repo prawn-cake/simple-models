@@ -1,15 +1,11 @@
 Changelog
 =========
 
-0.5.2+1 (UNRELEASED)
+0.6.0 (2017-06-04)
 --------------------
 * [Improvement] Clearer interface for the ListField, it ignores user 'validators' parameter
 * [Breaking] Change `Document's` `__init__` signature: move attributes from `**kwargs` to `data`, add additional `**kwargs`.
- This adds possibility to use `Document` in multi inherited classes.
 * [Breaking] Remove dictionary as a storage from `Document`.
- Originally the information in the `Document` could be in inconsistent state, as it was stored in two places: attribute of the instance and it's dictionary. Now `Document` stores values of it's fields only in the attributes.
- Additionally, if `ALLOW_EXTRA_FIELDS` is `True`, new attribute of `ExtraField` will be created.
- **WARNING**: as `Document` is not instance of `dict` anymore, you can't dump instance of it to JSON. Now you must use `as_dict()` method fo deserialize your document.
 
 0.5.2 (2016-10-31)
 ------------------
