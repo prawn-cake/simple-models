@@ -1,52 +1,26 @@
 # -*- coding: utf-8 -*-
 import json
-from unittest import TestCase
-from datetime import datetime
+import os
+import os.path as op
 import time
+from datetime import datetime
+from unittest import TestCase
 
-from simplemodels.exceptions import ValidationError, FieldRequiredError, \
-    DefaultValueError, ImmutableDocumentError, ModelValidationError
-from simplemodels.fields import SimpleField, IntegerField, CharField, \
-    DocumentField, FloatField, BooleanField, ListField
-from simplemodels.models import AttributeDict, Document, ImmutableDocument, \
-    registry
+from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, \
+    ModelValidationError, ValidationError
+from simplemodels.fields import BooleanField, CharField, DateTimeField, \
+    DocumentField, FloatField, IntegerField, ListField, SimpleField
+from simplemodels.models import Document, ImmutableDocument, registry
+from simplemodels.tests.stub_models import Address, Comment, Person, Post
 
 
-class AttributeDictTest(TestCase):
+CUR_DIR = op.abspath(op.dirname(__file__))
+FIXTURES_DIR = op.join(CUR_DIR, 'fixtures')
 
-    def test_dict(self):
 
-        ad = AttributeDict()
-        ad._id = 1
-        self.assertEqual(ad['_id'], 1)
-        self.assertEqual(ad._id, 1)
-        self.assertEqual(getattr(ad, '_id'), 1)
-
-    def test_system_methods(self):
-        from copy import deepcopy
-
-        attr_d = AttributeDict(a=1)
-        ad_copy = deepcopy(attr_d)
-        self.assertTrue(ad_copy)
-
-    def test_nested_dict_access_via_attributes(self):
-        # Test nested attributes on create (on get in fact)
-        d = AttributeDict(a=1, nested=dict(b=2, nested_2=dict(c=3)))
-        self.assertEqual(d.a, 1)
-        self.assertEqual(d.nested.b, 2)
-        self.assertEqual(d.nested.nested_2.c, 3)
-        self.assertEqual(d, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
-
-        # Test nested attributes on set
-        d_2 = AttributeDict()
-        d_2.a = 1
-        d_2.nested = dict(b=2)
-        d_2.nested.nested_2 = dict(c=3)
-        self.assertEqual(d_2.a, 1)
-        self.assertEqual(d_2.nested.b, 2)
-        self.assertEqual(d_2.nested.nested_2.c, 3)
-        self.assertEqual(
-            d_2, {'a': 1, 'nested': {'b': 2, 'nested_2': {'c': 3}}})
+def get_json_fixture(fixture_name):
+    with open(op.join(FIXTURES_DIR, fixture_name)) as fd:
+        return json.load(fd)
 
 
 class DocumentTest(TestCase):
@@ -65,7 +39,7 @@ class DocumentTest(TestCase):
 
         bid = BidEmbedded()
 
-        self.assertIsInstance(bid, dict)
+        self.assertIsInstance(bid.as_dict(), dict)
         self.assertIsInstance(bid._fields, dict)
         self.assertEqual(
             sorted(bid._fields), sorted(('xsi_type', 'contentBid'))
@@ -98,16 +72,16 @@ class DocumentTest(TestCase):
             self.assertIn('Field xsi_type is required', str(err))
 
         self.assertRaises(
-            FieldRequiredError, TestDocument, xsi_type='')
+            FieldRequiredError, TestDocument, dict(xsi_type=''))
         self.assertRaises(
-            FieldRequiredError, TestDocument, xsi_type=None)
-        self.assertTrue(TestDocument(xsi_type='html'))
+            FieldRequiredError, TestDocument, dict(xsi_type=None))
+        self.assertTrue(TestDocument(dict(xsi_type='html')))
 
     def test_default_values_with_several_instances(self):
         from simplemodels.tests.stub_models import MailboxItem
 
         td = MailboxItem()
-        td_2 = MailboxItem(is_read=True)
+        td_2 = MailboxItem(dict(is_read=True))
 
         self.assertFalse(td.is_read)
         self.assertTrue(td_2.is_read)
@@ -132,11 +106,11 @@ class DocumentTest(TestCase):
         def get_id():
             return 'Not int'
 
-        with self.assertRaises(ValidationError):
-            class Message(Document):
-                id = IntegerField(default=get_id)
-            msg = Message()
-            self.assertIsNone(msg)
+        class Message(Document):
+            id = IntegerField(default=get_id)
+
+        with self.assertRaises(ValueError):
+            Message()
 
     def test_getting_classname(self):
         from simplemodels.tests.stub_models import Address
@@ -152,22 +126,17 @@ class DocumentTest(TestCase):
             def c(self):
                 return str(self.a) + str(self.b)
 
-        document = DocumentWithProperty(a=1, b=2)
+        document = DocumentWithProperty(dict(a=1, b=2))
 
         self.assertEqual(document.c, '12')
 
     def test_fields_container(self):
-        """ get_instance method should guarantee that object contains exactly
-        same fields as described
-
-
-        """
         class TestModel(Document):
             a = SimpleField()
             b = SimpleField()
 
         source_data = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
-        obj = TestModel(**source_data)
+        obj = TestModel(source_data)
         self.assertEqual(len(obj), len(TestModel._fields))
         for field_name in obj.keys():
             self.assertIn(field_name, TestModel._fields)
@@ -177,19 +146,27 @@ class DocumentTest(TestCase):
             street = CharField()
 
         class User(Document):
-            id = SimpleField(validators=[int])
+            id = IntegerField()
             name = SimpleField(required=True, default='TestName')
             address = DocumentField(model=PostAddress)
 
-        a = User(id='1', name='Maks', address=PostAddress(street=999))
+        a = User(
+            dict(
+                id='1',
+                name='Maks',
+                address=PostAddress(
+                    dict(
+                        street=999))))
         self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
         self.assertEqual(a.id, 1)
         self.assertEqual(a.address.street, '999')
 
         a = User(
-            id='1', name='Maks',
-            address={'street': 999, 'city': 'Saint-Petersburg'}
+            dict(
+                id='1', name='Maks',
+                address={'street': 999, 'city': 'Saint-Petersburg'}
+            )
         )
         self.assertIsInstance(a, User)
         self.assertIsInstance(a.address, PostAddress)
@@ -201,45 +178,45 @@ class DocumentTest(TestCase):
         # Expect a ValidationError: wrong 'address' format is passed
         self.assertRaises(
             ValidationError, User,
-            id='1', name='Maks', address=[('street', 999), ]
+            dict(id='1', name='Maks', address=[('street', 999), ])
         )
 
     def test_model_with_validator(self):
         class Timestamp(Document):
-            hour = SimpleField(validators=[int])
-            minute = SimpleField(validators=[int])
+            hour = IntegerField()
+            minute = IntegerField()
 
         class Moment(Document):
-            start_date = SimpleField(
-                validators=[lambda value: datetime.strptime(
-                    value, '%Y-%m-%dT%H:%M:%SZ')])
-            count = SimpleField(validators=[int])
+            start_date = DateTimeField()
+            count = IntegerField()
             timestamp = DocumentField(model=Timestamp)
             ts = DocumentField(model=Timestamp)
 
         moment = Moment(
-            start_date='2009-04-01T23:51:23Z',
-            count='1',
-            timestamp=dict(hour=10, minute=59),
-            ts=Timestamp(hour=10, minute=59)
+            dict(
+                start_date='2009-04-01T23:51:23Z',
+                count='1',
+                timestamp=dict(hour=10, minute=59),
+                ts=Timestamp(hour=10, minute=59)
+            )
         )
         self.assertIsInstance(moment.start_date, datetime)
         self.assertIsInstance(moment.count, int)
         self.assertIsInstance(moment.timestamp, Timestamp)
         self.assertIsInstance(moment.ts, Timestamp)
 
-        self.assertRaises(ValidationError, Moment, count='a')
+        self.assertRaises(ValueError, Moment, dict(count='a'))
 
     def test_model_verbose_name(self):
         class RateModel(Document):
             InterestRate = FloatField(name='Interest Rate')
 
         data = {"Interest Rate": "1.01"}
-        my_model = RateModel(**data)
+        my_model = RateModel(data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
 
-        my_model = RateModel(**data)
+        my_model = RateModel(data)
         self.assertEqual(len(my_model), 1)
         self.assertEqual(my_model.InterestRate, 1.01)
         self.assertEqual(my_model['Interest Rate'], 1.01)
@@ -248,7 +225,7 @@ class DocumentTest(TestCase):
         class RateModel(Document):
             InterestRate = FloatField(name='Interest Rate', required=True)
         data = {"Interest Rate": "1.01"}
-        my_model = RateModel(**data)
+        my_model = RateModel(data)
         self.assertEqual(my_model['Interest Rate'], 1.01)
         self.assertRaises(FieldRequiredError, RateModel)
 
@@ -268,10 +245,12 @@ class DocumentTest(TestCase):
             text = CharField(max_length=500)
 
         msg = LogMessage(
-            timestamp=datetime.now(),
-            app_name='Logger',
-            text='test log message',
-            level='DEBUG'  # extra field isn't described in the document
+            dict(
+                timestamp=datetime.now(),
+                app_name='Logger',
+                text='test log message',
+                level='DEBUG'  # extra field isn't described in the document
+            )
         )
         self.assertEqual(msg.level, 'DEBUG')
 
@@ -282,10 +261,10 @@ class DocumentTest(TestCase):
 
         with self.assertRaises(ValidationError):
             # Put wrong log level
-            message = LogMessage(level='FATAL', text='Test log message')
+            message = LogMessage(dict(level='FATAL', text='Test log message'))
             self.assertIsNone(message)
 
-        message = LogMessage(level='DEBUG', text='Test log message')
+        message = LogMessage(dict(level='DEBUG', text='Test log message'))
         self.assertTrue(message)
 
         with self.assertRaises(ValueError) as err:
@@ -310,11 +289,11 @@ class DocumentTest(TestCase):
         class UserMessage(Message):
             user_id = IntegerField()
 
-        msg = UserMessage(text='message text')
+        msg = UserMessage(dict(text='message text'))
         self.assertIn('text', msg)
         self.assertIn('user_id', msg)
 
-        msg = UserMessage(text='user message text')
+        msg = UserMessage(dict(text='user message text'))
         self.assertEqual(msg.user_id, None)
         self.assertEqual(msg.text, 'user message text')
 
@@ -328,10 +307,10 @@ class DocumentTest(TestCase):
         class User(AuthMixin, UserMixin):
             full_name = CharField()
 
-        user = User(username='John')
+        user = User(dict(username='John'))
         self.assertEqual(user.username, 'John')
         self.assertEqual(user.id, None)
-        self.assertEqual(user.full_name, '')
+        self.assertEqual(user.full_name, None)
 
         class BankAccountMixin(Document):
             account_id = IntegerField()
@@ -342,23 +321,23 @@ class DocumentTest(TestCase):
 
         # expect that inherited username field is still required
         with self.assertRaises(FieldRequiredError) as err:
-            my_user = MyUser(id=1)
+            my_user = MyUser(dict(id=1))
             self.assertIsNone(my_user)
             self.assertIn('Field username is required', str(err))
 
         # Check that id value was overridden and coerced to float
-        my_user = MyUser(id=1, username='Max')
+        my_user = MyUser(dict(id=1, username='Max'))
         self.assertIsInstance(my_user.id, float)
 
         # Check fields existence
-        self.assertEqual(my_user.full_name, '')
+        self.assertEqual(my_user.full_name, None)
         self.assertEqual(my_user.account_id, None)
         self.assertEqual(my_user.bank_name, 'Golden sink')
-        self.assertEqual(my_user, {'id': 1.0,
-                                   'full_name': '',
-                                   'username': 'Max',
-                                   'account_id': None,
-                                   'bank_name': 'Golden sink'})
+        self.assertDictEqual(my_user.as_dict(), {'id': 1.0,
+                                                 'full_name': None,
+                                                 'username': 'Max',
+                                                 'account_id': None,
+                                                 'bank_name': 'Golden sink'})
 
     def test_post_model_validation(self):
         class User(Document):
@@ -374,11 +353,11 @@ class DocumentTest(TestCase):
                 return value
 
         with self.assertRaises(ModelValidationError) as err:
-            user = User(name='Mikko', password='123', is_admin=True)
+            user = User(dict(name='Mikko', password='123', is_admin=True))
             self.assertIn('Admin password is too short', str(err))
             self.assertIsNone(user)
 
-        user = User(name='Mikko', password='1234567890', is_admin=True)
+        user = User(dict(name='Mikko', password='1234567890', is_admin=True))
         self.assertIsInstance(user, User)
 
     def test_model_with_self_field(self):
@@ -403,10 +382,10 @@ class DocumentTest(TestCase):
             'User_': 'X'
         }
 
-        user = User.create(data)
+        user = User(data)
         self.assertIsInstance(user, User)
         self.assertEqual(user, data)
-        company = Company.create(data)
+        company = Company(data)
         self.assertIsInstance(company, Company)
 
     def test_instance_check(self):
@@ -424,11 +403,226 @@ class DocumentTest(TestCase):
             name = CharField()
 
         with self.assertRaises(ModelValidationError):
-            user = User.create(None)
-            self.assertIsNone(user)
+            User('this must be a dict')
 
-            user = User.create('this must be a dict')
-            self.assertIsNone(user)
+    def test_update_value(self):
+        from simplemodels.tests.stub_models import Address
+
+        address = Address(dict(street='foo'))
+        self.assertEqual(address.street, 'foo')
+        self.assertEqual(address['street'], 'foo')
+
+        address.street = 'bar'
+        self.assertEqual(address.street, 'bar')
+        self.assertEqual(address['street'], 'bar')
+
+        address['street'] = 'baz'
+        self.assertEqual(address.street, 'baz')
+        self.assertEqual(address['street'], 'baz')
+
+    def test_key_with_special_symbols(self):
+        class Foo(Document):
+            bar = CharField(name='special-attribute with unexpected symbols!')
+
+        foo = Foo({'special-attribute with unexpected symbols!': 'baz'})
+        self.assertEqual(foo.bar, 'baz')
+        self.assertEqual(
+            foo['special-attribute with unexpected symbols!'], 'baz')
+        self.assertEqual(
+            getattr(
+                foo,
+                'special-attribute with unexpected symbols!'),
+            'baz')
+
+    def test_extra_attributes(self):
+        class Foo(Document):
+
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
+
+        data = {
+            'hello': 'world',
+            'special-attribute with unexpected symbols!': 'baz'}
+        foo = Foo(data)
+
+        self.assertEqual(foo.hello, 'world')
+        self.assertEqual(foo['hello'], 'world')
+        self.assertEqual(getattr(foo, 'hello'), 'world')
+
+        self.assertEqual(
+            foo['special-attribute with unexpected symbols!'], 'baz')
+        self.assertEqual(
+            getattr(
+                foo,
+                'special-attribute with unexpected symbols!'),
+            'baz')
+        self.assertDictEqual(foo.as_dict(), data)
+
+        data1 = {'some name': {'another some name': [1, 3, 5]}}
+        foo1 = Foo(data1)
+        self.assertEqual(foo1['some name'], {'another some name': [1, 3, 5]})
+        self.assertEqual(foo1['some name']['another some name'], [1, 3, 5])
+        self.assertDictEqual(foo1.as_dict(), data1)
+
+        data2 = {':x:': ':y:', 'foo1': foo1}
+        foo2 = Foo(data2)
+        self.assertEqual(foo2[':x:'], ':y:')
+        self.assertEqual(foo2.foo1, foo1)
+        self.assertEqual(foo2.foo1, foo1.as_dict())
+        self.assertEqual(foo2.as_dict(), {':x:': ':y:', 'foo1': data1})
+
+    def test_init_with_kwargs(self):
+        class Base(Document):
+
+            def __init__(self, data, password, **kwargs):
+                self.password = password
+                super(Base, self).__init__(data=data, password=password, **kwargs)
+
+        class Tag(Base):
+            value = CharField()
+
+        class TagsContainer(Base):
+            tags = ListField(of=Tag)
+
+        class User(Base):
+            name = CharField()
+            tag = DocumentField(TagsContainer)
+
+        user = User(password='secret',
+                    data={'name': 'tu-ti-ta-ta',
+                          'tag': {'tags': [dict(value='foo'), dict(value='bar')]}})
+        self.assertEqual(user.password, 'secret')
+        self.assertEqual(user.tag.tags[0].password, 'secret')
+        user.tag.tags.append(Tag(dict(value='bar'), 'secret'))
+        # # user.tag.tags.append(dict(value='bar'))  # THIS DOESN't WORK!!!
+        self.assertEqual(user.tag.tags[1].password, 'secret')
+
+
+class DocumentToPythonTest(TestCase):
+
+    def setUp(self):
+        self.address_empty = Address()
+        self.address_1 = Address(dict(street="Park Boulevard", zip='4591'))
+        self.address_2 = Address(dict(street="Freshour Circle", zip='3329'))
+        self.address_3 = Address(dict(street="Edsel Road", zip=938))
+
+        self.person_cara = Person(
+            dict(name='Cara', address=self.address_1, phones=['12', 21, 22]))
+        self.person_theodore = Person(
+            dict(name='Theodore', address=self.address_2, phones=['44']))
+        self.person_fausto = Person(
+            dict(name='Fausto', address=self.address_2, phones=[]))
+        self.person_julieta = Person(
+            dict(name='Julieta', address=self.address_3))
+        self.person_henry = Person(
+            dict(name='Henry', address=self.address_3, phones=[8, 3, 12, 99]))
+
+    def test_address_as_dict(self):
+        self.assertDictEqual(
+            self.address_empty.as_dict(), {'street': None, 'zip': None})
+        self.assertDictEqual(
+            self.address_1.as_dict(), dict(street="Park Boulevard", zip=4591))
+        self.assertDictEqual(
+            self.address_2.as_dict(), dict(street="Freshour Circle", zip=3329))
+        self.assertDictEqual(
+            self.address_3.as_dict(), dict(street="Edsel Road", zip=938))
+
+    def test_person_as_dict(self):
+        self.assertDictEqual(
+            self.person_cara.as_dict(),
+            dict(name='Cara',
+                 address=dict(street="Park Boulevard", zip=4591),
+                 phones=[12, 21, 22])
+        )
+        self.assertDictEqual(
+            self.person_theodore.as_dict(),
+            dict(
+                name='Theodore',
+                address=dict(
+                    street="Freshour Circle",
+                    zip=3329),
+                phones=[44])
+        )
+        self.assertDictEqual(
+            self.person_fausto.as_dict(),
+            dict(
+                name='Fausto',
+                address=dict(
+                    street="Freshour Circle",
+                    zip=3329),
+                phones=[])
+        )
+        self.assertDictEqual(
+            self.person_julieta.as_dict(),
+            dict(
+                name='Julieta',
+                address=dict(
+                    street="Edsel Road",
+                    zip=938),
+                phones=[])
+        )
+        self.assertDictEqual(
+            self.person_henry.as_dict(),
+            dict(name='Henry',
+                 address=dict(street="Edsel Road", zip=938),
+                 phones=[8, 3, 12, 99])
+        )
+
+    def test_post_as_dict(self):
+        first_comment = Comment(dict(
+            body="I like this post!",
+            author=self.person_julieta,
+            created="2017-05-31T00:00:00Z",
+            favorite_by=[self.person_fausto, self.person_cara]
+        ))
+        second_comment = Comment(dict(
+            body="It could be better...",
+            author=self.person_cara,
+            created="2017-05-31T11:11:11Z",
+            favorite_by=[]
+        ))
+        post = Post(dict(
+            title='The Wiz',
+            author=self.person_theodore,
+            comments=[
+                first_comment,
+                second_comment,
+                dict(
+                    body="You think it's funny?!",
+                    author=self.person_henry,
+                    created="2017-05-31T22:22:22Z",
+                    favorite_by=[self.person_henry]
+                )
+            ],
+            tags=["foo", 'bar', u'baz']
+        ))
+
+        self.assertDictEqual(post.as_dict(), get_json_fixture('post_1.json'))
+
+        del post.comments[2]
+        post.comments.append(
+            dict(
+                body="What can I add more?",
+                author=dict(
+                    name='Timothy S Manning',
+                    address=self.address_1,
+                ),
+                created="2017-05-31T12:34:56Z",
+                favorite_by=[
+                    dict(
+                        name='Shannon',
+                        address=dict(street="Red Hawk Road", zip=3015),
+                        phones=[23233, 6566]
+                    ),
+                    dict(
+                        name='Harold Jones',
+                        address=dict(street="Still Pastures Drive", zip=4030),
+                    )
+                ]
+            )
+        )
+
+        self.assertDictEqual(post.as_dict(), get_json_fixture('post_2.json'))
 
 
 class DocumentMetaOptionsTest(TestCase):
@@ -442,8 +636,8 @@ class DocumentMetaOptionsTest(TestCase):
                 OMIT_MISSED_FIELDS = True
 
         msg = Message()
-        self.assertEqual(msg._meta.OMIT_MISSED_FIELDS, True)
-        self.assertEqual(msg._meta.ALLOW_EXTRA_FIELDS, False)
+        self.assertEqual(msg._meta['OMIT_MISSED_FIELDS'], True)
+        self.assertEqual(msg._meta['ALLOW_EXTRA_FIELDS'], False)
 
     def test_nested_meta_with_inheritance(self):
         class Message(Document):
@@ -461,15 +655,15 @@ class DocumentMetaOptionsTest(TestCase):
 
         # Expect that Message meta options will be inherited
         log_msg = LogMessage()
-        self.assertEqual(log_msg._meta.OMIT_MISSED_FIELDS, False)
-        self.assertEqual(log_msg._meta.ALLOW_EXTRA_FIELDS, False)
+        self.assertEqual(log_msg._meta['OMIT_MISSED_FIELDS'], False)
+        self.assertEqual(log_msg._meta['ALLOW_EXTRA_FIELDS'], False)
 
     def test_omit_missed_fields_attribute(self):
         class Message(Document):
             text = CharField(max_length=120)
 
         msg = Message()
-        self.assertEqual(msg, {'text': ''})
+        self.assertEqual(msg, {'text': None})
 
         class MessageWithoutNone(Document):
 
@@ -483,8 +677,14 @@ class DocumentMetaOptionsTest(TestCase):
         self.assertEqual(msg.text, None)
 
         msg.text = None
-        self.assertEqual(msg, {'text': ''})
-        self.assertEqual(msg.text, '')
+        # TODO: this is very tricky: `OMIT_MISSED_FIELDS` should only care
+        # about missed fields in original data or `None` should be also
+        # treated as missed value?
+        self.assertEqual(msg, {})
+        self.assertEqual(msg.text, None)
+
+        msg.text = 11**2
+        self.assertEqual(msg, dict(text='121'))
 
     def test_omit_missed_fields_attribute_with_defaults(self):
         class User(Document):
@@ -510,7 +710,7 @@ class DocumentMetaOptionsTest(TestCase):
             user = User()
             self.assertIsNone(user)
 
-        user = User(name='Mr.Robot')
+        user = User(dict(name='Mr.Robot'))
         self.assertEqual(user, {'name': 'Mr.Robot'})
 
 
@@ -524,10 +724,13 @@ class ValidationTest(TestCase):
             self.assertIsNone(p)
 
     def test_validation_with_default_values(self):
-        # Expect an error on class initialization step
-        with self.assertRaises(DefaultValueError):
-            class A(Document):
-                id = IntegerField(default='a')
+
+        class A(Document):
+            id = IntegerField(default='a')
+
+        with self.assertRaises(ValueError):
+            # Expect an error creating an instance of class
+            A()
 
         # Accepted case: string to int will be forced
         class B(Document):
@@ -604,7 +807,7 @@ class JsonValidationTest(TestCase):
 
     def test_json_dumps(self):
         # Serialize document to json
-        serialized = json.dumps(self.user)
+        serialized = json.dumps(dict(self.user.as_dict()))
         self.assertIsInstance(serialized, str)
 
         # Deserialize
@@ -629,7 +832,7 @@ class JsonValidationTest(TestCase):
 
         post_1 = Post()
         self.assertIsNone(post_1.owner_id)
-        json_data = json.dumps(post_1)
+        json_data = json.dumps(post_1.as_dict())
         post_2 = Post(**json.loads(json_data))
         self.assertIsNone(post_2.owner_id)
 

@@ -2,24 +2,28 @@
 """Tests stub models"""
 
 from datetime import datetime
+
 import six
-from simplemodels.fields import SimpleField
+from simplemodels.fields import SimpleField, DocumentField, IntegerField, DateTimeField, BooleanField, CharField, \
+    ListField
 from simplemodels.models import Document
 
 
 class MailboxItem(Document):
-    subject = SimpleField(default='')
+    subject = CharField(default='')
     body = SimpleField(default='')
     type = SimpleField(choices=["SUGGESTION", "MAIL"],
                        max_length=10,
                        default='MAIL')
     # received_at = SimpleField(default=timezone.now)
-    received_at = SimpleField(default='')
-    is_read = SimpleField(default=False)
+    received_at = DateTimeField(default=datetime.now)
+    is_read = BooleanField(default=False)
 
-    def __init__(self, **kwargs):
-        super(MailboxItem, self).__init__(**kwargs)
-        if 'received_at' not in kwargs and not self.received_at:
+    def __init__(self, data=None, **kwargs):
+        if data is None:
+            data = {}
+        super(MailboxItem, self).__init__(data, **kwargs)
+        if 'received_at' not in data and not self.received_at:
             self.received_at = datetime.now()
 
     def __repr__(self):
@@ -33,8 +37,24 @@ class MailboxItem(Document):
 
 class Address(Document):
     street = SimpleField()
+    zip = IntegerField()
 
 
 class Person(Document):
     name = SimpleField(required=True)
-    address = SimpleField(validators=[Address])
+    address = DocumentField(model=Address)
+    phones = ListField(int)
+
+
+class Comment(Document):
+    body = CharField()
+    author = DocumentField(Person)
+    created = DateTimeField(default=datetime.now)
+    favorite_by = ListField(of=Person)
+
+
+class Post(Document):
+    title = CharField()
+    author = DocumentField(Person)
+    comments = ListField(of=Comment)
+    tags = ListField(of=str)

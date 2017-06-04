@@ -1,9 +1,11 @@
 Changelog
 =========
 
-0.5.2+1 (UNRELEASED)
+0.6.0 (2017-06-04)
 --------------------
 * [Improvement] Clearer interface for the ListField, it ignores user 'validators' parameter
+* [Breaking] Change `Document's` `__init__` signature: move attributes from `**kwargs` to `data`, add additional `**kwargs`.
+* [Breaking] Remove dictionary as a storage from `Document`.
 
 0.5.2 (2016-10-31)
 ------------------

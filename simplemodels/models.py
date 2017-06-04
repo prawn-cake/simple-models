@@ -1,44 +1,22 @@
 # -*- coding: utf-8 -*-
-
-import six
+import copy
 import inspect
 import weakref
+from abc import ABCMeta
+from collections import MutableMapping
+
+import six
+
 from simplemodels.exceptions import ImmutableDocumentError, \
     ModelValidationError
-from simplemodels.fields import SimpleField, DocumentField
-
+from simplemodels.fields import ExtraField, SimpleField
 
 __all__ = ['Document', 'ImmutableDocument']
-
 
 registry = weakref.WeakValueDictionary()
 
 
-class AttributeDict(dict):
-
-    """Dict wrapper with access to keys via attributes"""
-
-    def __getattr__(self, name):
-        # do not affect magic methods like __deepcopy__
-        if name.startswith('__') and name.endswith('__'):
-            return super(AttributeDict, self).__getattr__(self, name)
-
-        try:
-            val = self[name]
-            if isinstance(val, dict) and not isinstance(val, AttributeDict):
-                return AttributeDict(val)
-            return val
-        except KeyError:
-            raise AttributeError("Attribute '{}' doesn't exist".format(name))
-
-    def __setattr__(self, key, value):
-        if isinstance(value, dict):
-            value = AttributeDict(value)
-        super(AttributeDict, self).__setattr__(key, value)
-        self[key] = super(AttributeDict, self).__getattribute__(key)
-
-
-class DocumentMeta(type):
+class DocumentMeta(ABCMeta):
     """ Metaclass for collecting fields info """
 
     def __new__(mcs, name, parents, dct):
@@ -52,7 +30,7 @@ class DocumentMeta(type):
         """
 
         _fields = {}
-        _meta = AttributeDict()
+        _meta = dict()
 
         # Document inheritance implementation
         for parent_cls in parents:
@@ -61,7 +39,7 @@ class DocumentMeta(type):
             _fields.update(parent_fields)
 
             # Copy parent meta options
-            parent_meta = getattr(parent_cls, '_meta', AttributeDict())
+            parent_meta = getattr(parent_cls, '_meta', dict())
             _meta.update(parent_meta)
 
         # Inspect subclass to save SimpleFields and require field names
@@ -85,7 +63,7 @@ class DocumentMeta(type):
 
 
 @six.add_metaclass(DocumentMeta)
-class Document(AttributeDict):
+class Document(MutableMapping):
     """ Main class to represent structured dict-like document """
 
     class Meta:
@@ -98,56 +76,93 @@ class Document(AttributeDict):
         # TODO: it might make sense to add option to raise an error if unknown
         # field is given for the document
 
-    def __init__(self, **kwargs):
-        kwargs = self._unprotect_fields(kwargs)
-        kwargs = self._clean_kwargs(kwargs)
+    def __init__(self, data=None, **kwargs):
+        if data is None:
+            data = {}
 
-        # dict init
-        prepared_fields = self._prepare_fields(kwargs)
-        super(Document, self).__init__(**prepared_fields)
+        if self._meta['ALLOW_EXTRA_FIELDS']:
+            self._fields = copy.deepcopy(self._fields)
+
+        if not isinstance(data, MutableMapping):
+            raise ModelValidationError(
+                "Data must be instance of mapping, but got '%s'!" %
+                type(data))
+
+        data = copy.deepcopy(data)
+
+        data = self._clean_data(data)
+
+        self._prepare_fields(data, **kwargs)
         self._post_init_validation()
 
-    def _prepare_fields(self, kwargs):
+    def __getitem__(self, name):
+        return getattr(self, name)
+
+    def __setitem__(self, name, value):
+        setattr(self, name, value)
+
+    def __delitem__(self, name):
+        delattr(self, name)
+
+    def __iter__(self):
+        """Iterator over available field names of the Document.
+
+        Fields, which values are `None` will be returned only
+        in case `OMIT_MISSED_FIELDS` meta variable is `False`.
+        """
+        for field_name in self._fields:
+            if self.get(field_name) is not None or not self._meta['OMIT_MISSED_FIELDS']:
+                yield field_name
+
+    def __len__(self):
+        return len(self._fields)
+
+    def as_dict(self):
+        return {
+            field_name: self._fields[field_name].to_python(value)
+            for field_name, value in self.items()
+        }
+
+    def _prepare_fields(self, data, **kwargs):
         """Do field validations and set defaults
 
-        :param kwargs: init parameters
+        :param data: init parameters
         :return:
         """
 
         # It validates values on set, check fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
 
-            # Get field value or set default
-            default_val = getattr(field_obj, 'default')
-            field_val = kwargs.get(field_name)
-            if field_val is None:
-                field_val = default_val() if callable(default_val) \
-                    else default_val
+            field_val = data.get(field_name, field_obj.default)
 
             # Build model structure
-            if field_name in kwargs:
+            if field_name in data:
+                # remove field from data, so at the end
+                # only extra fields would left.
+                data.pop(field_name)
                 # set presented field
-                val = field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = val
-
-            # build empty nested document
-            elif issubclass(type(field_obj), DocumentField):
-                val = field_obj.__set_value__(self, {})
-                kwargs[field_name] = val
+                field_obj.__set_value__(self, field_val, **kwargs)
             else:
                 # field is not presented in the given init parameters
-                if field_val is None and self._meta.OMIT_MISSED_FIELDS:
+                if field_val is None and self._meta['OMIT_MISSED_FIELDS']:
                     # Run validation even on skipped fields to validate
                     # 'required' and other attributes
                     field_obj.validate(field_val)
                     continue
-                val = field_obj.__set_value__(self, field_val)
-                kwargs[field_name] = val
+                field_obj.__set_value__(self, field_val, **kwargs)
 
-        return kwargs
+        # Create extra fields if any were not filtered by `_clean_data` method.
+        for key, value in data.items():
+            field_obj = ExtraField()
+            field_obj._name = key
+            field_obj._holder_name = self.__class__.__name__
+            self._fields[key] = field_obj
+
+            field_obj.__set_value__(self, value, **kwargs)
+        return data
 
     @classmethod
-    def _clean_kwargs(cls, kwargs):
+    def _clean_data(cls, kwargs):
         """Clean with excluding extra fields if the model has
         ALLOW_EXTRA_FIELDS meta flag on
 
@@ -157,12 +172,10 @@ class Document(AttributeDict):
         fields = getattr(cls, '_fields', {})
 
         # put everything extra in the document
-        if cls._meta.ALLOW_EXTRA_FIELDS:
-            kwargs = {k: v for k, v in kwargs.items()}
+        if cls._meta['ALLOW_EXTRA_FIELDS']:
+            return kwargs
         else:
-            kwargs = {k: v for k, v in kwargs.items() if k in fields}
-
-        return kwargs
+            return {k: v for k, v in kwargs.items() if k in fields}
 
     def _post_init_validation(self):
         """Validate model after init with validate_%s extra methods
@@ -179,45 +192,7 @@ class Document(AttributeDict):
                 else:
                     raise ModelValidationError(
                         '%s (%r) is not a function' %
-                        (method_name, validation_method, ))
-
-    @classmethod
-    def _protect_fields(cls, data):
-        """Rename all of the fields with ModelName_field.
-        This enables fields protection from 'self', 'cls' and other reserved
-        keywords
-        """
-        if not isinstance(data, dict):
-            raise ModelValidationError("Init data must be a dict '%r' is given"
-                                       % data)
-        return {'%s_%s' % (cls.__name__, k): v for k, v in data.items()}
-
-    @classmethod
-    def _unprotect_fields(cls, kwargs):
-        """Reverse of protect fields + backward compatible with old init style.
-
-        """
-        protect_prefix = '%s_' % cls.__name__
-        unprotected = {}
-        for k, v in kwargs.items():
-            if k.startswith(protect_prefix):
-                k = k.replace(protect_prefix, '', 1)
-                unprotected[k] = v
-
-            # Do not override protected and decoded values
-            if k not in unprotected:
-                unprotected[k] = v
-        return unprotected
-
-    @classmethod
-    def create(cls, data):
-        """Safe factory method to create a document
-
-        :param data: dict: init data
-        :return: document instance
-        """
-        protected = cls._protect_fields(data)
-        return cls(**protected)
+                        (method_name, validation_method,))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, dict(self))

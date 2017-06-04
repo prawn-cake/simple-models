@@ -15,7 +15,9 @@ class ValidationError(Exception):
     """ Custom exception class. Useful for validation methods """
 
     def __str__(self):
-        return self.message
+        if hasattr(self, 'message'):
+            return self.message
+        return super(ValidationError, self).__str__()
 
 
 class ModelNotFoundError(ValidationError):
@@ -35,11 +37,6 @@ class FieldError(ValidationError):
 
 class FieldRequiredError(FieldError):
     """ Raised when required field is not found """
-    pass
-
-
-class DefaultValueError(FieldError):
-    """Raised when default value is wrong"""
     pass
 
 
