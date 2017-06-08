@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import json
-import os
 import os.path as op
 import time
 from datetime import datetime
 from unittest import TestCase
 
-from simplemodels.exceptions import FieldRequiredError, ImmutableDocumentError, \
-    ModelValidationError, ValidationError
+from simplemodels.exceptions import FieldRequiredError, ModelValidationError, \
+    ValidationError, DocumentError
 from simplemodels.fields import BooleanField, CharField, DateTimeField, \
     DocumentField, FloatField, IntegerField, ListField, SimpleField
 from simplemodels.models import Document, ImmutableDocument, registry
@@ -497,6 +496,38 @@ class DocumentTest(TestCase):
         # # user.tag.tags.append(dict(value='bar'))  # THIS DOESN't WORK!!!
         self.assertEqual(user.tag.tags[1].password, 'secret')
 
+    def test_allow_extra_fields_error_cases(self):
+        """If a document has an ALLOW_EXTRA_FIELDS flag enabled we get
+        ambiguity of picking the value of if some method has already existed
+        To prevent such overlaps, it should raise a DocumentError
+
+        """
+
+        class Message(Document):
+            id = IntegerField()
+
+            class Meta:
+                ALLOW_EXTRA_FIELDS = True
+
+            @property
+            def answer(self):
+                return 42
+
+            def get_id(self):
+                return self.id
+
+        with self.assertRaises(DocumentError):
+            Message(dict(id=1, answer='hello'))
+
+        with self.assertRaises(DocumentError):
+            # Pass 'get_id' as a field
+            Message(dict(id=1, get_id='hello'))
+
+        # Success case
+        msg = Message(dict(id=1))
+        self.assertTrue(msg.id == msg.get_id() == 1)
+        self.assertEqual(msg.answer, 42)
+
 
 class DocumentToPythonTest(TestCase):
 
@@ -754,13 +785,13 @@ class ImmutableDocumentTest(TestCase):
 
         user = User()
         self.assertEqual(user.id, 1)
-        with self.assertRaises(ImmutableDocumentError):
+        with self.assertRaises(DocumentError):
             user.name = 'Jorge'
 
-        with self.assertRaises(ImmutableDocumentError):
+        with self.assertRaises(DocumentError):
             setattr(user, 'name', 'Jorge')
 
-        with self.assertRaises(ImmutableDocumentError):
+        with self.assertRaises(DocumentError):
             user['name'] = 'Jorge'
 
     def test_immutable_nested_document(self):
@@ -778,7 +809,7 @@ class ImmutableDocumentTest(TestCase):
         self.assertEqual(user.meta.login, 'guest')
 
         # Try to set immutable nested doc field, expect error
-        with self.assertRaises(ImmutableDocumentError):
+        with self.assertRaises(DocumentError):
             user.meta.login = 'admin'
 
         # Try to set mutable top-level name field

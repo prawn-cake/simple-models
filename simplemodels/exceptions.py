@@ -5,7 +5,7 @@ __all__ = [
     'FieldRequiredError',
     'TypeIsNotSupported',
     'DefaultValueError',
-    'ImmutableDocumentError',
+    'DocumentError'
     'ImmutableFieldError',
     'ModelValidationError'
 ]
@@ -40,8 +40,8 @@ class FieldRequiredError(FieldError):
     pass
 
 
-class ImmutableDocumentError(ValidationError):
-    """Raised when try to set any field in the immutable document"""
+class DocumentError(ValidationError):
+    """Document-specific error"""
     pass
 
 
