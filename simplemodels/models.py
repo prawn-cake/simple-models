@@ -7,8 +7,7 @@ from collections import MutableMapping
 
 import six
 
-from simplemodels.exceptions import ImmutableDocumentError, \
-    ModelValidationError
+from simplemodels.exceptions import ModelValidationError, DocumentError
 from simplemodels.fields import ExtraField, SimpleField
 
 __all__ = ['Document', 'ImmutableDocument']
@@ -30,7 +29,7 @@ class DocumentMeta(ABCMeta):
         """
 
         _fields = {}
-        _meta = dict()
+        _meta = {}
 
         # Document inheritance implementation
         for parent_cls in parents:
@@ -39,7 +38,7 @@ class DocumentMeta(ABCMeta):
             _fields.update(parent_fields)
 
             # Copy parent meta options
-            parent_meta = getattr(parent_cls, '_meta', dict())
+            parent_meta = getattr(parent_cls, '_meta', {})
             _meta.update(parent_meta)
 
         # Inspect subclass to save SimpleFields and require field names
@@ -89,7 +88,6 @@ class Document(MutableMapping):
                 type(data))
 
         data = copy.deepcopy(data)
-
         data = self._clean_data(data)
 
         self._prepare_fields(data, **kwargs)
@@ -132,7 +130,6 @@ class Document(MutableMapping):
 
         # It validates values on set, check fields.SimpleField#__set_value__
         for field_name, field_obj in self._fields.items():
-
             field_val = data.get(field_name, field_obj.default)
 
             # Build model structure
@@ -140,6 +137,7 @@ class Document(MutableMapping):
                 # remove field from data, so at the end
                 # only extra fields would left.
                 data.pop(field_name)
+
                 # set presented field
                 field_obj.__set_value__(self, field_val, **kwargs)
             else:
@@ -152,7 +150,14 @@ class Document(MutableMapping):
                 field_obj.__set_value__(self, field_val, **kwargs)
 
         # Create extra fields if any were not filtered by `_clean_data` method.
+        # ALLOW_EXTRA_FIELDS has an effect here
         for key, value in data.items():
+            # py3 will raise an AttributeError without explicitly given 'None'
+            # as a 3rd parameter
+            if getattr(self, key, None):
+                raise DocumentError(
+                    "Can't add extra field '%s.%s' because document already has "
+                    "entity with the same name" % (self.__class__.__name__, key))
             field_obj = ExtraField()
             field_obj._name = key
             field_obj._holder_name = self.__class__.__name__
@@ -202,7 +207,7 @@ class ImmutableDocument(Document):
     """Read only document. Useful for validation purposes only"""
 
     def __setattr__(self, key, value):
-        raise ImmutableDocumentError(
+        raise DocumentError(
             '{} is immutable. Set operation is not allowed.'.format(self))
 
     def __setitem__(self, key, value):

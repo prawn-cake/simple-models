@@ -1,8 +1,12 @@
 Changelog
 =========
 
-0.6.0 (2017-06-04)
+0.6.0+1 (UNRELEASED)
 --------------------
+* [Bugfix] #24: Prevent to create an instance of document with ALLOW_EXTRA_FIELDS enabled and which has overlapping data keys it gets
+
+0.6.0 (2017-06-04)
+------------------
 * [Improvement] Clearer interface for the ListField, it ignores user 'validators' parameter
 * [Breaking] Change `Document's` `__init__` signature: move attributes from `**kwargs` to `data`, add additional `**kwargs`.
 * [Breaking] Remove dictionary as a storage from `Document`.

@@ -298,7 +298,7 @@ If you need to make your field or whole document immutable
     >>> user.id = 2
     Traceback (most recent call last):
       ...
-    ImmutableDocumentError: ImmutableUser({'id': 1, 'name': u'John'}) is immutable. Set operation is not allowed.
+    DocumentError: ImmutableUser({'id': 1, 'name': u'John'}) is immutable. Set operation is not allowed.
 
 ## Run tests
 
