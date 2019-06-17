@@ -1,6 +1,6 @@
-bumpversion     == 0.5.3
+bumpversion
 
 # Python 2 to 3 compatibility
 
-six             == 1.9.0
+six
 
