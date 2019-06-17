@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='simple-models',
-    version='0.6.1',
+    version='0.6.2',
     packages=['simplemodels'],
     install_requires=['six'],
     url='https://github.com/prawn-cake/simple-models',
