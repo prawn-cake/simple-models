@@ -4,7 +4,7 @@ setup(
     name='simple-models',
     version='0.6.1',
     packages=['simplemodels'],
-    install_requires=['six==1.9.0'],
+    install_requires=['six'],
     url='https://github.com/prawn-cake/simple-models',
     license='MIT',
     author='Maksim Ekimovskii',
