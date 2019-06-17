@@ -1,7 +1,11 @@
 Changelog
 =========
 
-0.6.0+1 (UNRELEASED)
+0.6.2 (2019-06-17)
+--------------------
+* Loose requirements versions
+
+0.6.1 (2017-06-11)
 --------------------
 * [Bugfix] #24: Prevent to create an instance of document with ALLOW_EXTRA_FIELDS enabled and which has overlapping data keys it gets
 
